@@ -3,6 +3,7 @@
 // New transforms (or overrides) are added by registering a name, never by editing
 // engine dispatch code.
 import { TRANSFORM_NAMES } from './names.js';
+import * as fns from './functions/index.js';
 
 /**
  * @typedef {(ctx: object, params: import('../model/parameter.js').Parameter[]) => unknown} TransformHandler
@@ -46,15 +47,34 @@ export class TransformRegistry {
   }
 }
 
-const notImplemented = (name) => () => {
-  throw new Error(`TransformRegistry: "${name}" is reserved but not yet implemented (see PLAN.md Phase 3)`);
+// Maps each spec-defined transform name to its real handler (src/transforms/functions/).
+// `evaluate` is exported as `evaluateTransform` to avoid shadowing the engine's own
+// evaluator helpers — the registry key is still the spec name "evaluate".
+const DEFAULT_HANDLERS = {
+  create: fns.create,
+  copy: fns.copy,
+  truncate: fns.truncate,
+  escape: fns.escape,
+  cast: fns.cast,
+  append: fns.append,
+  translate: fns.translate,
+  reference: fns.reference,
+  dateOp: fns.dateOp,
+  uuid: fns.uuid,
+  pointer: fns.pointer,
+  evaluate: fns.evaluateTransform,
+  cc: fns.cc,
+  c: fns.c,
+  qty: fns.qty,
+  id: fns.id,
+  cp: fns.cp,
 };
 
-/** Builds a registry with every spec-defined transform name reserved. */
+/** Builds a registry with every spec-defined transform name wired to its real handler. */
 export function createDefaultTransformRegistry() {
   const registry = new TransformRegistry();
   for (const name of TRANSFORM_NAMES) {
-    registry.register(name, notImplemented(name));
+    registry.register(name, DEFAULT_HANDLERS[name]);
   }
   return registry;
 }

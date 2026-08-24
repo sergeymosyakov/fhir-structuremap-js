@@ -59,8 +59,9 @@ Groups), §7.9.5 (StructureMap resource schema).
   all 17 spec-defined transform names (§7.8.0.8.2 table): `create, copy, truncate,
   escape, cast, append, translate, reference, dateOp, uuid, pointer, evaluate, cc, c,
   qty, id, cp`. Phase 1 registers each with a documented signature and a
-  not-yet-implemented marker — Phase 3 fills in real behavior. Registering happens by
-  name so a consumer can override/extend without touching engine code.
+  not-yet-implemented marker; Phase 3 replaced every marker with a real handler (see
+  below). Registering happens by name so a consumer can override/extend without
+  touching engine code.
 - Unit tests: round-trip a hand-written StructureMap JSON fixture through
   `StructureMapDocument.fromJSON()` and assert the object graph shape; assert the
   registry has all 17 names and rejects duplicate registration.
@@ -85,36 +86,58 @@ Spec: §7.8.0.8 (Transform Rules, overview), §7.8.0.8.1 (Source Content).
 - Tests: each source-content feature gets its own fixture + assertion, including the
   4-firings permutation example from the spec itself.
 
-## Phase 3 — Target transform execution (all 17 functions, for real)
+## Phase 3 — Target transform execution (all 17 functions, for real) — DONE
 
-Spec: §7.8.0.8.2 (Target Transform + full function table), §7.8.0.8.3 (Type Wrangling).
+Spec: §7.8.0.8.2 (Target Transform + full function table).
 
-- Real implementations for all transform functions, each in its own module under
-  `src/transforms/functions/`, registered via the Phase-1 registry:
-  - `copy`, `truncate` (FHIRPath `substring`), `escape`, `cast`, `append`
-    (string/element concatenation), `reference`, `pointer`, `uuid` (RFC4122 v4, injected
-    RNG for testability), `dateOp`.
-  - `evaluate` — runs the injected FHIRPath evaluator; implements the 0/1/many-results
-    rules exactly as specified (empty → no element; single → set value; many + repeating
-    target → one instance per value; many + non-repeating target → error). Implements the
-    `()`-shorthand context-implicit form.
-  - `create` — via an injected "create instance" callback (Mapping Support API), or a
-    minimal built-in default (empty object of the requested type) when none is supplied.
-  - `translate` — via an injected ConceptMap-translate callback (`%terminologies.translate()`
-    equivalent); output selector (`code|system|display|Coding|CodeableConcept`).
-  - `cc`, `c`, `qty`, `id`, `cp` — structured-value factories per the exact parameter
-    shapes in the spec table.
-- List-mode handling for targets (`first | share | last | single`) — implemented even
-  though the spec marks this "TODO" upstream; document our interpretation and test it
-  explicitly since this is exactly the kind of ambiguity that causes silent bugs.
-- Auto-create (no `transform` specified): error on primitive/ambiguous-choice types per
-  spec; else auto-create using the injected create-instance callback.
-- Tests: one fixture set per transform function, plus the type-wrangling error cases.
+Delivered: each transform is its own module under `src/transforms/functions/`, wired
+into `createDefaultTransformRegistry()`, with a `resolveParameter`/`resolveParameters`
+helper (`src/transforms/param-resolution.js`) that turns a `Parameter` (`valueId` means
+variable lookup, anything else is a literal) into the plain value a handler receives.
 
-## Phase 4 — Dependent rules, nested rules, groups, default mapping groups
+- `create` (injected `ctx.createInstance`, else `{}`), `copy`, `truncate`
+  (`String#substring`), `escape` (xml-to-plain-text only — the spec defines no format
+  vocabulary beyond that), `cast` (string/integer/decimal/boolean/Reference; explicit
+  type required, implicit inference needs Phase 6), `append`, `translate` (injected
+  `ctx.translate`, all 5 output kinds), `reference`/`pointer` (`ResourceType/id`),
+  `uuid` (injected `ctx.uuidFactory`, else `crypto.randomUUID()`), `cc`, `c`, `qty`
+  (natural-text and explicit forms), `id`, `cp` (system inference from content).
+- `evaluate` (`src/transforms/functions/evaluate.js`) runs the injected FHIRPath
+  evaluator and returns the raw result collection — interpreting 0/1/many results
+  against a target's cardinality is target-application logic, deliberately deferred
+  (see below).
+- `dateOp` intentionally throws a documented error: the spec's own table lists its
+  parameters as `??` — inventing semantics the spec never defined would violate THE
+  MUST rule 3 (spec fidelity over shortcuts).
+- Tests: one `describe` block per function in `tests/transforms/functions.test.js`,
+  covering both happy paths and the documented error cases.
 
-Spec: §7.8.0.7 (Groups, extends, `<<types>>`/`<<type+>>`), §7.8.0.8.4 (Dependent Rules),
-§7.8.0.9 (Simple Form / identity transform), §7.8.0.10 (Default mapping groups).
+**Scope correction (discovered mid-implementation, documented here for honesty):**
+actually writing a computed value into a target tree — auto-create for
+`transform`-less targets, target `listMode` (`first | share | last | single`) assembly
+across sibling rules targeting the same list, and turning `evaluate`'s multi-value
+result into multiple target instances — all require bookkeeping shared across a whole
+group's rule executions (which rule claimed "first", what a shared list already
+contains, etc.). That is inherently the same kind of per-group execution state Phase 4
+needs for dependent-rule execution, so target-value application (the write side) moves
+to Phase 4, done together with dependent rules rather than half-built twice here. Phase
+3 as delivered covers every transform function as a pure, fully-tested computation —
+the missing piece is only the "write the computed value into the tree" plumbing, not
+the transforms themselves.
+
+## Phase 4 — Target-value application, dependent rules, groups, default mapping groups
+
+Spec: §7.8.0.7 (Groups, extends, `<<types>>`/`<<type+>>`), §7.8.0.8.3 (Type Wrangling),
+§7.8.0.8.4 (Dependent Rules), §7.8.0.9 (Simple Form / identity transform), §7.8.0.10
+(Default mapping groups).
+
+Absorbs the target-value application work deferred from Phase 3 (see its "Scope
+correction" note): writing a rule's computed target values into the actual tree,
+auto-create for `transform`-less targets with the type-wrangling error cases, target
+`listMode` (`first | share | last | single`) assembly across sibling rules sharing a
+target list, and expanding `evaluate`'s multi-value results into multiple target
+instances (error if the target is non-repeating) — all naturally need the same
+per-group execution bookkeeping as:
 
 - Nested rule execution (`rule.rule[]`) inheriting parent variable scope.
 - Named dependent-rule / group invocation (`rule.dependent[]`) — parameter binding by

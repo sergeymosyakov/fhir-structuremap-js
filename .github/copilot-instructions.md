@@ -35,6 +35,16 @@
 
 ---
 
+## Customization layout
+
+| File | Scope | Contains |
+|------|-------|----------|
+| [skills/security-review/SKILL.md](skills/security-review/SKILL.md) | on-demand | AI-reasoned OWASP-style codebase security scan (injection, secrets, access control, crypto, deps) — report only, no auto-applied patches |
+
+`github-actions-hardening` (workflow security review) is deliberately not ported yet — add it once this repo actually has a `.github/workflows/*.yml` to review.
+
+---
+
 ## Project Context
 
 - **What this is**: a standalone, browser-capable JS engine that executes FHIR `StructureMap` resources (the FHIR Mapping Language). Positioned as a self-sufficient library — installable and usable independently of any host application (e.g. `fhir-questionnaire-builder`, which is the project this was spun out of).
