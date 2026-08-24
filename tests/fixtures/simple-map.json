@@ -1,0 +1,82 @@
+{
+  "resourceType": "StructureMap",
+  "url": "http://example.org/StructureMap/simple-test",
+  "name": "SimpleTest",
+  "status": "draft",
+  "structure": [
+    { "url": "http://hl7.org/fhir/StructureDefinition/Patient", "mode": "source", "alias": "Src" },
+    { "url": "http://hl7.org/fhir/StructureDefinition/Observation", "mode": "target", "alias": "Tgt" }
+  ],
+  "import": [],
+  "const": [
+    { "name": "defaultStatus", "value": "'final'" }
+  ],
+  "group": [
+    {
+      "name": "main",
+      "typeMode": "none",
+      "input": [
+        { "name": "src", "type": "Patient", "mode": "source" },
+        { "name": "tgt", "type": "Observation", "mode": "target" }
+      ],
+      "rule": [
+        {
+          "name": "setStatus",
+          "source": [{ "context": "src" }],
+          "target": [
+            {
+              "context": "tgt",
+              "element": "status",
+              "transform": "evaluate",
+              "parameter": [{ "valueId": "src" }, { "valueString": "%defaultStatus" }]
+            }
+          ]
+        },
+        {
+          "name": "copyName",
+          "source": [
+            {
+              "context": "src",
+              "element": "name",
+              "type": "HumanName",
+              "min": 0,
+              "max": "*",
+              "listMode": "first",
+              "variable": "nm",
+              "condition": "nm.given.exists()",
+              "check": "nm.family.exists()",
+              "logMessage": "mapping name",
+              "defaultValue": "'Unknown'"
+            }
+          ],
+          "target": [
+            {
+              "context": "tgt",
+              "element": "note",
+              "variable": "noteVar",
+              "listMode": ["first"],
+              "transform": "evaluate",
+              "parameter": [{ "valueId": "nm" }, { "valueString": "given.first() + ' ' + family" }]
+            }
+          ],
+          "rule": [
+            {
+              "name": "nestedNoop",
+              "source": [{ "context": "nm" }],
+              "target": []
+            }
+          ],
+          "dependent": [
+            { "name": "logNote", "parameter": [{ "valueId": "noteVar" }] }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "logNote",
+      "typeMode": "none",
+      "input": [{ "name": "n", "type": "string", "mode": "source" }],
+      "rule": []
+    }
+  ]
+}
