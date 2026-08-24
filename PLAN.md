@@ -125,11 +125,10 @@ to Phase 4, done together with dependent rules rather than half-built twice here
 the missing piece is only the "write the computed value into the tree" plumbing, not
 the transforms themselves.
 
-## Phase 4 — Target-value application, dependent rules, groups, default mapping groups
+## Phase 4 — Target-value application, dependent rules, groups, default mapping groups — DONE
 
-Spec: §7.8.0.7 (Groups, extends, `<<types>>`/`<<type+>>`), §7.8.0.8.3 (Type Wrangling),
-§7.8.0.8.4 (Dependent Rules), §7.8.0.9 (Simple Form / identity transform), §7.8.0.10
-(Default mapping groups).
+Spec: §7.8.0.7 (Groups, extends), §7.8.0.8.3 (Type Wrangling), §7.8.0.8.4 (Dependent
+Rules).
 
 Absorbs the target-value application work deferred from Phase 3 (see its "Scope
 correction" note): writing a rule's computed target values into the actual tree,
@@ -137,19 +136,39 @@ auto-create for `transform`-less targets with the type-wrangling error cases, ta
 `listMode` (`first | share | last | single`) assembly across sibling rules sharing a
 target list, and expanding `evaluate`'s multi-value results into multiple target
 instances (error if the target is non-repeating) — all naturally need the same
-per-group execution bookkeeping as:
+per-group execution bookkeeping as dependent-rule execution — DONE:
 
-- Nested rule execution (`rule.rule[]`) inheriting parent variable scope.
-- Named dependent-rule / group invocation (`rule.dependent[]`) — parameter binding by
-  position + mode (source/target) validation per spec.
-- `extends` — group inherits another group's rules; validate identical input
-  signature (mode/name/type) as the spec requires.
-- Default mapping groups (`typeMode: types | type-and-types`) — engine looks up the
-  matching default group by (source type, target type) when a rule has no explicit
-  transform/dependent and both ends have a variable — i.e. the identity-transform simple
-  form (`src.element -> tgt.element;`) and the even-shorter `src -> tgt: a, b, c;` form.
-- Tests: recursive/nested rule fixtures, extends-inheritance fixture, default-group
-  dispatch fixture reproducing the spec's own identity-transform example.
+- `src/engine/list-plan.js` (`ListPlan`) — deferred first/middle/last buckets flushed
+  once per `run()` (so rule execution order never affects final placement, matching
+  "first must come first regardless of which rule ran when"), plus `share`/`single`
+  cursor-based merge into existing items. Both are a concrete, tested interpretation of
+  the spec's own acknowledged "TODO: what do these do?" for target list modes.
+- `src/engine/target-applier.js` (`applyTarget`) — dispatches to the transform
+  registry (or untyped auto-create when no `transform`), unwraps `evaluate()`'s 0/1/many
+  result collection, and infers "is this element repeating" only from a pre-existing
+  array or an explicit `listMode` — never merely from getting multiple values back,
+  which instead throws for a target with no such signal (a real bug caught by its own
+  test: the first draft treated "many values" as automatic proof of repeating-ness).
+- `src/engine/rule-executor.js` (`executeRule`) — recurses into nested `rule.rule[]`
+  inheriting the firing scope, and invokes `rule.dependent[]` by name with positionally
+  resolved arguments.
+- `src/engine/group-invoker.js` / `src/engine/effective-rules.js` — positional input
+  binding for dependent group invocation, and `extends` (base group's rules run before
+  the derived group's own, with circular-chain detection).
+- `StructureMapEngine.run(doc, inputs, groupName?)` — the real top-level entry point:
+  binds inputs, executes every effective rule of the resolved group, flushes the
+  `ListPlan`, and returns the target-mode inputs.
+- Tests: `tests/engine/{list-plan,target-applier,rule-executor,effective-rules,
+  group-invoker,engine-run}.test.js` — nested rules, dependent invocation, extends
+  inheritance, and a full Patient→Observation `run()` reproducing the same shape
+  verified live in the browser-integration research earlier in this project's history.
+
+**Deferred to Phase 6 (documented here, not silently dropped):** default mapping
+groups (`typeMode: types | type-and-types`) and the identity-transform simple form
+(`src.element -> tgt.element;`) both require knowing the *target* element's expected
+type to dispatch correctly — which needs a real `structureDefinitionResolver`, not
+available until Phase 6. Implementing a guessed type-inference now would violate THE
+MUST rule 3; it lands alongside Phase 6's type-aware work instead.
 
 ## Phase 5 — Imports & constants
 
@@ -162,13 +181,18 @@ Spec: §7.8.0.5 (Map Imports), §7.8.0.6 (Constants).
 - Tests: multi-file map fixture (main map + imported datatype map), constants fixture
   including the shadowing and circularity error cases.
 
-## Phase 6 — Type-aware features
+## Phase 6 — Type-aware features (incl. default mapping group dispatch, deferred from Phase 4)
 
 Spec: §7.8.0.4 (Structure Definition References — `queried`/`produced` modes),
-§7.8.0.8.3 (Type Wrangling).
+§7.8.0.8.3 (Type Wrangling), §7.8.0.9 (Simple Form / identity transform), §7.8.0.10
+(Default mapping groups, `<<types>>`/`<<type+>>`).
 
 - `structureDefinitionResolver` wiring for `type`-filtered sources and `cast()`/auto-create
   type resolution.
+- Default mapping groups (`typeMode: types | type-and-types`) — engine looks up the
+  matching default group by (source type, target type) once real type resolution can
+  answer "what type does this target element expect"; drives the identity-transform
+  simple form (`src.element -> tgt.element;` and `src -> tgt: a, b, c;`).
 - `queried` / `produced` structure modes — the map asks the host (via callback) for
   instances of a type, rather than receiving/creating them directly.
 - Tests against a couple of real, small StructureDefinitions (not a bundled profile

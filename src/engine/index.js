@@ -4,3 +4,8 @@ export { EngineError } from './errors.js';
 export { bindGroupInputs } from './group-binder.js';
 export { matchRule, cartesianProduct } from './rule-matcher.js';
 export { resolveSource } from './source-resolver.js';
+export { ListPlan } from './list-plan.js';
+export { applyTarget } from './target-applier.js';
+export { executeRule } from './rule-executor.js';
+export { getEffectiveRules } from './effective-rules.js';
+export { invokeGroup } from './group-invoker.js';
