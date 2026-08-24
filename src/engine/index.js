@@ -9,3 +9,5 @@ export { applyTarget } from './target-applier.js';
 export { executeRule } from './rule-executor.js';
 export { getEffectiveRules } from './effective-rules.js';
 export { invokeGroup } from './group-invoker.js';
+export { ConstantResolver } from './constants.js';
+export { resolveImportedGroup } from './import-resolver.js';

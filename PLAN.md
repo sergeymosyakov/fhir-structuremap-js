@@ -170,16 +170,39 @@ type to dispatch correctly — which needs a real `structureDefinitionResolver`,
 available until Phase 6. Implementing a guessed type-inference now would violate THE
 MUST rule 3; it lands alongside Phase 6's type-aware work instead.
 
-## Phase 5 — Imports & constants
+## Phase 5 — Imports & constants — DONE
 
 Spec: §7.8.0.5 (Map Imports), §7.8.0.6 (Constants).
 
-- `imports[]` resolution via an injected `structureMapResolver(url)` callback, including
-  the `*` wildcard-suffix matching rule.
-- `const[]` (`let name = expression;`) — lazy evaluation, single evaluation per run,
-  local-variable shadowing rules, circular-reference detection → engine error.
-- Tests: multi-file map fixture (main map + imported datatype map), constants fixture
-  including the shadowing and circularity error cases.
+- `src/engine/import-resolver.js` (`resolveImportedGroup`) — `rule.dependent[]` group
+  lookup now searches the current map, then recursively through `doc.import[]` via an
+  injected `ctx.structureMapResolver(pattern)` (always returns an array — matching a
+  `*` wildcard pattern against "available maps" is the host's job, since the engine
+  has no built-in registry of what maps exist), with a visited-set guarding circular
+  import chains. `getEffectiveRules` runs against whichever document actually owns the
+  resolved group (so an imported group's own `extends` resolves within its own map).
+- `src/engine/constants.js` (`ConstantResolver`) — `doc.const[]` resolved genuinely
+  lazily: `resolve(name)` only evaluates a constant's FHIRPath expression the first
+  time it's referenced, caches the result, and detects circular constant-to-constant
+  references. `asEnv()` wraps the FHIRPath env in a `Proxy` so laziness holds even for
+  constants referenced only inside an arbitrary condition/`evaluate()` expression string
+  the engine never parses — the underlying `fhirpath` library reads env vars by plain
+  property access, so the Proxy's `get` trap resolves on demand.
+- `VariableScope` gained an optional constants fallback (root scope only, inherited
+  through the parent chain) so a constant name can be used directly as a rule's source
+  `context`, per "the names are available as source variables".
+- **Documented simplification:** constants are resolved once from the top-level
+  document passed to `run()` and used for the whole run, including inside rules
+  belonging to a group invoked from an imported map — the spec scopes constant names
+  "within a single mapping source file", so a fully faithful implementation would swap
+  the constants resolver at every import-crossing. That's a meaningfully bigger change
+  (ctx would need to carry a per-owning-document constants resolver) for a rare case;
+  flagged here rather than silently assumed.
+- Tests: `tests/engine/{constants,import-resolver}.test.js` (laziness, caching,
+  circular-reference detection, cross-map group resolution, circular-import safety)
+  plus `tests/engine/engine-run-phase5.test.js` (full `run()` using a constant as
+  `%name` in an `evaluate()` expression, a constant used directly as source `context`,
+  and a dependent group invoked from an imported map).
 
 ## Phase 6 — Type-aware features (incl. default mapping group dispatch, deferred from Phase 4)
 
