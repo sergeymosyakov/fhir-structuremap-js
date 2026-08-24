@@ -3,13 +3,18 @@
 // (§7.8.0.8 Transform Rules, §7.8.0.8.4 Dependent Rules).
 import { matchRule } from './rule-matcher.js';
 import { applyTarget } from './target-applier.js';
+import { applyIdentityShorthand, isIdentityShorthandEligible } from './identity-shorthand.js';
 import { resolveParameters } from '../transforms/param-resolution.js';
 
 export function executeRule(rule, scope, ctx, listPlan) {
   const firings = matchRule(rule, scope, ctx);
+  const shorthandEligible = isIdentityShorthandEligible(rule);
   for (const firingScope of firings) {
     for (const ruleTarget of rule.target) {
-      applyTarget(ruleTarget, firingScope, ctx, listPlan, rule);
+      const tryShorthand = shorthandEligible && !ruleTarget.transform;
+      if (!(tryShorthand && applyIdentityShorthand(rule, ruleTarget, firingScope, ctx, listPlan))) {
+        applyTarget(ruleTarget, firingScope, ctx, listPlan, rule);
+      }
     }
     for (const nestedRule of rule.rule) {
       executeRule(nestedRule, firingScope, ctx, listPlan);

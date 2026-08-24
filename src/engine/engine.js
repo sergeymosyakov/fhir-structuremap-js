@@ -1,6 +1,7 @@
 // Public engine entry point — wires the injected FHIRPath evaluator and Mapping
-// Support API callbacks (createInstance, translate, uuidFactory, structureMapResolver)
-// into the scoping/matching/target-application building blocks, plus the top-level `run()`.
+// Support API callbacks (createInstance, translate, uuidFactory, structureMapResolver,
+// structureDefinitionResolver, queryInstances, produceInstance) into the
+// scoping/matching/target-application building blocks, plus the top-level `run()`.
 import { bindGroupInputs } from './group-binder.js';
 import { matchRule } from './rule-matcher.js';
 import { getEffectiveRules } from './effective-rules.js';
@@ -16,9 +17,14 @@ export class StructureMapEngine {
    * @param {{ evaluator: import('./evaluator.js').FhirPathEvaluator, env?: object,
    *   onLog?: (msg: unknown) => void, registry?: import('../transforms/registry.js').TransformRegistry,
    *   createInstance?: (type: string|undefined) => object, translate?: (source: unknown, mapUri: string) => object,
-   *   uuidFactory?: () => string, structureMapResolver?: (pattern: string) => object[]|undefined }} deps
+   *   uuidFactory?: () => string, structureMapResolver?: (pattern: string) => object[]|undefined,
+   *   structureDefinitionResolver?: (type: string) => object|undefined,
+   *   queryInstances?: (type: string) => unknown[], produceInstance?: (type: string) => unknown }} deps
    */
-  constructor({ evaluator, env, onLog, registry, createInstance, translate, uuidFactory, structureMapResolver } = {}) {
+  constructor({
+    evaluator, env, onLog, registry, createInstance, translate, uuidFactory,
+    structureMapResolver, structureDefinitionResolver, queryInstances, produceInstance,
+  } = {}) {
     this.evaluator = evaluator;
     this.env = env;
     this.onLog = onLog;
@@ -27,10 +33,14 @@ export class StructureMapEngine {
     this.translate = translate;
     this.uuidFactory = uuidFactory;
     this.structureMapResolver = structureMapResolver;
+    this.structureDefinitionResolver = structureDefinitionResolver;
+    this.queryInstances = queryInstances;
+    this.produceInstance = produceInstance;
   }
 
   #ctx(doc, constants) {
     const ctx = {
+      doc,
       evaluator: this.evaluator,
       env: constants ? constants.asEnv() : this.env,
       onLog: this.onLog,
@@ -39,6 +49,9 @@ export class StructureMapEngine {
       translate: this.translate,
       uuidFactory: this.uuidFactory,
       structureMapResolver: this.structureMapResolver,
+      structureDefinitionResolver: this.structureDefinitionResolver,
+      queryInstances: this.queryInstances,
+      produceInstance: this.produceInstance,
       constants,
     };
     ctx.invokeGroup = (name, args, listPlan) => invokeGroup(doc, name, args, ctx, listPlan);

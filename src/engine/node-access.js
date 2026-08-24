@@ -1,7 +1,9 @@
 // Reads children of a plain-JS-object data tree by element name, and a best-effort
-// type check. Real StructureDefinition-based typing (Phase 6) will refine `matchesType`;
-// until then this is deliberately conservative (accepts unknown/complex types) rather
-// than silently dropping valid data.
+// type check. When a structureDefinitionResolver is injected (Phase 6), a complex
+// value without a resourceType tag is checked structurally (its own keys must be a
+// subset of the type's declared children) rather than always accepted.
+import { getDeclaredChildKeys } from './structure-definition.js';
+
 export function getChildren(node, elementName) {
   const value = node?.[elementName];
   if (value === undefined || value === null) return [];
@@ -10,12 +12,20 @@ export function getChildren(node, elementName) {
 
 const PRIMITIVE_JS_TYPE = { string: 'string', boolean: 'boolean', integer: 'number', decimal: 'number' };
 
-export function matchesType(value, type) {
+export function matchesType(value, type, structureDefinitionResolver) {
   if (value === null || value === undefined) return false;
   if (typeof value === 'object' && typeof value.resourceType === 'string') {
     return value.resourceType === type;
   }
   const expectedJsType = PRIMITIVE_JS_TYPE[type];
   if (expectedJsType) return typeof value === expectedJsType;
-  return true; // complex/unknown type without a resourceType tag — accept pending Phase 6
+
+  if (structureDefinitionResolver && typeof value === 'object') {
+    const sd = structureDefinitionResolver(type);
+    if (sd) {
+      const declared = getDeclaredChildKeys(sd);
+      return Object.keys(value).every((k) => declared.includes(k));
+    }
+  }
+  return true; // complex/unknown type, nothing to check it against — accept
 }

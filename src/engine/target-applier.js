@@ -1,8 +1,7 @@
 // Writes a rule target's computed value into the target tree (§7.8.0.8.2 Target
-// Transform + Type Wrangling). Auto-create (no `transform`) is untyped here — real
-// type-aware auto-create needs Phase 6's StructureDefinition resolver; this creates a
-// plain object (or delegates to ctx.createInstance) and documents the gap rather than
-// guessing a shape.
+// Transform + Type Wrangling). Auto-create (no `transform`) is untyped by default —
+// identity-shorthand dispatch (§7.8.0.9/§7.8.0.10, see identity-shorthand.js) is tried
+// first by the caller when a structureDefinitionResolver is available.
 import { EngineError } from './errors.js';
 import { resolveParameters } from '../transforms/param-resolution.js';
 
@@ -17,6 +16,15 @@ function computeValue(ruleTarget, scope, ctx) {
   // element created, 1 -> that value, many -> one target instance per value (only
   // valid for a repeating target — enforced by the caller).
   return ruleTarget.transform === 'evaluate' ? result : [result];
+}
+
+/** Tracks the created instance's type from an explicit `create("Type")` call, so a
+ * later nested rule can use it for its own identity-shorthand dispatch. */
+function trackCreatedType(ruleTarget, scope, value) {
+  if (ruleTarget.transform === 'create' && ruleTarget.parameter[0]?.kind === 'string') {
+    scope.setType(ruleTarget.variable, ruleTarget.parameter[0].value);
+  }
+  return value;
 }
 
 /**
@@ -35,7 +43,7 @@ export function applyTarget(ruleTarget, scope, ctx, listPlan, claimant) {
 
   if (!ruleTarget.element) {
     const value = values[values.length - 1];
-    if (ruleTarget.variable) scope.set(ruleTarget.variable, value);
+    if (ruleTarget.variable) trackCreatedType(ruleTarget, scope, scope.set(ruleTarget.variable, value));
     return value;
   }
 
@@ -52,7 +60,7 @@ export function applyTarget(ruleTarget, scope, ctx, listPlan, claimant) {
     for (const value of values) {
       last = listPlan.add(targetArray, value, ruleTarget.listMode, ruleTarget.listRuleId, claimant);
     }
-    if (ruleTarget.variable) scope.set(ruleTarget.variable, last);
+    if (ruleTarget.variable) trackCreatedType(ruleTarget, scope, scope.set(ruleTarget.variable, last));
     return last;
   }
 
@@ -61,6 +69,6 @@ export function applyTarget(ruleTarget, scope, ctx, listPlan, claimant) {
   }
   const value = values[0];
   contextNode[ruleTarget.element] = value;
-  if (ruleTarget.variable) scope.set(ruleTarget.variable, value);
+  if (ruleTarget.variable) trackCreatedType(ruleTarget, scope, scope.set(ruleTarget.variable, value));
   return value;
 }

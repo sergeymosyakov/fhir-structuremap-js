@@ -1,0 +1,15 @@
+{
+  "resourceType": "StructureDefinition",
+  "url": "http://hl7.org/fhir/StructureDefinition/Patient",
+  "name": "Patient",
+  "status": "active",
+  "kind": "resource",
+  "type": "Patient",
+  "snapshot": {
+    "element": [
+      { "path": "Patient", "type": [{ "code": "DomainResource" }] },
+      { "path": "Patient.name", "type": [{ "code": "HumanName" }] },
+      { "path": "Patient.birthDate", "type": [{ "code": "date" }] }
+    ]
+  }
+}

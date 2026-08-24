@@ -1,0 +1,16 @@
+{
+  "resourceType": "StructureDefinition",
+  "url": "http://hl7.org/fhir/StructureDefinition/HumanName",
+  "name": "HumanName",
+  "status": "active",
+  "kind": "complex-type",
+  "type": "HumanName",
+  "snapshot": {
+    "element": [
+      { "path": "HumanName", "type": [{ "code": "Element" }] },
+      { "path": "HumanName.use", "type": [{ "code": "code" }] },
+      { "path": "HumanName.family", "type": [{ "code": "string" }] },
+      { "path": "HumanName.given", "type": [{ "code": "string" }] }
+    ]
+  }
+}

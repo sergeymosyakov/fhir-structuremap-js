@@ -14,7 +14,10 @@ function bindPositionalInputs(group, argValues, constants) {
     throw new EngineError(`Group "${group.name}": expected ${group.input.length} argument(s), got ${argValues.length}`);
   }
   const scope = new VariableScope(null, constants);
-  group.input.forEach((input, i) => scope.set(input.name, argValues[i]));
+  group.input.forEach((input, i) => {
+    scope.set(input.name, argValues[i]);
+    scope.setType(input.name, input.type);
+  });
   return scope;
 }
 

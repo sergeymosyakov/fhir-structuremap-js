@@ -11,3 +11,6 @@ export { getEffectiveRules } from './effective-rules.js';
 export { invokeGroup } from './group-invoker.js';
 export { ConstantResolver } from './constants.js';
 export { resolveImportedGroup } from './import-resolver.js';
+export { findDefaultGroup } from './default-mapping.js';
+export { getDeclaredChildKeys, resolveChildType } from './structure-definition.js';
+export { applyIdentityShorthand, isIdentityShorthandEligible } from './identity-shorthand.js';

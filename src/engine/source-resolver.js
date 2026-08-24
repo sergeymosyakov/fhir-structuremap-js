@@ -16,7 +16,7 @@ export function resolveSource(ruleSource, scope, ctx) {
 
   let candidates = ruleSource.element ? getChildren(contextNode, ruleSource.element) : [contextNode];
   if (ruleSource.element && ruleSource.type) {
-    candidates = candidates.filter((c) => matchesType(c, ruleSource.type));
+    candidates = candidates.filter((c) => matchesType(c, ruleSource.type, ctx.structureDefinitionResolver));
   }
 
   checkCardinality(candidates, ruleSource);

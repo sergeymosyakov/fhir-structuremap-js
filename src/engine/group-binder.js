@@ -10,6 +10,7 @@ export function bindGroupInputs(group, inputs, constants = null) {
       throw new EngineError(`Group "${group.name}": missing required input "${input.name}"`);
     }
     scope.set(input.name, inputs[input.name]);
+    scope.setType(input.name, input.type);
   }
   return scope;
 }
