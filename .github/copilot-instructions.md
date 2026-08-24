@@ -40,8 +40,7 @@
 | File | Scope | Contains |
 |------|-------|----------|
 | [skills/security-review/SKILL.md](skills/security-review/SKILL.md) | on-demand | AI-reasoned OWASP-style codebase security scan (injection, secrets, access control, crypto, deps) — report only, no auto-applied patches |
-
-`github-actions-hardening` (workflow security review) is deliberately not ported yet — add it once this repo actually has a `.github/workflows/*.yml` to review.
+| [skills/github-actions-hardening/SKILL.md](skills/github-actions-hardening/SKILL.md) | on-demand | Security review for `.github/workflows/*.yml` — script injection, privileged triggers, action pinning, token scopes — report only |
 
 ---
 
