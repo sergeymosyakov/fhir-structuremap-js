@@ -1,0 +1,51 @@
+import { describe, it, expect } from 'vitest';
+import { TRANSFORM_NAMES } from '../src/transforms/names.js';
+import { TransformRegistry, createDefaultTransformRegistry } from '../src/transforms/registry.js';
+
+describe('TransformRegistry', () => {
+  it('registers and retrieves a handler by name', () => {
+    const registry = new TransformRegistry();
+    const handler = () => 'ok';
+    registry.register('copy', handler);
+    expect(registry.get('copy')).toBe(handler);
+    expect(registry.has('copy')).toBe(true);
+  });
+
+  it('rejects duplicate registration', () => {
+    const registry = new TransformRegistry();
+    registry.register('copy', () => {});
+    expect(() => registry.register('copy', () => {})).toThrow(/already registered/);
+  });
+
+  it('override() replaces an existing handler, but not an unregistered one', () => {
+    const registry = new TransformRegistry();
+    registry.register('copy', () => 'v1');
+    registry.override('copy', () => 'v2');
+    expect(registry.get('copy')()).toBe('v2');
+    expect(() => registry.override('truncate', () => {})).toThrow(/cannot override unregistered/);
+  });
+
+  it('get() throws a clear error for an unknown name', () => {
+    const registry = new TransformRegistry();
+    expect(() => registry.get('nope')).toThrow(/no handler registered/);
+  });
+});
+
+describe('createDefaultTransformRegistry', () => {
+  it('reserves all 17 spec-defined transform names', () => {
+    const registry = createDefaultTransformRegistry();
+    expect(registry.names.sort()).toEqual([...TRANSFORM_NAMES].sort());
+    expect(registry.names).toHaveLength(17);
+  });
+
+  it('reserved handlers throw a not-yet-implemented error when invoked', () => {
+    const registry = createDefaultTransformRegistry();
+    expect(() => registry.get('evaluate')()).toThrow(/not yet implemented/);
+  });
+
+  it('a reserved handler can be overridden with a real implementation', () => {
+    const registry = createDefaultTransformRegistry();
+    registry.override('uuid', () => 'fixed-uuid');
+    expect(registry.get('uuid')()).toBe('fixed-uuid');
+  });
+});

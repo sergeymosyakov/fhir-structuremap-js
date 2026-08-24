@@ -33,8 +33,9 @@
     "fhirpath": "^3.0.0 || ^4.0.0"
   },
   "devDependencies": {
-    "eslint": "^9.0.0",
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.0.0",
     "fhirpath": "^4.3.0",
-    "vitest": "^2.0.0"
+    "vitest": "^2.1.9"
   }
 }
