@@ -1,12 +1,13 @@
 // Public engine entry point — wires the injected FHIRPath evaluator and Mapping
-// Support API callbacks (createInstance, translate, uuidFactory) into the
-// scoping/matching/target-application building blocks, plus the top-level `run()`.
+// Support API callbacks (createInstance, translate, uuidFactory, structureMapResolver)
+// into the scoping/matching/target-application building blocks, plus the top-level `run()`.
 import { bindGroupInputs } from './group-binder.js';
 import { matchRule } from './rule-matcher.js';
 import { getEffectiveRules } from './effective-rules.js';
 import { executeRule } from './rule-executor.js';
 import { invokeGroup } from './group-invoker.js';
 import { ListPlan } from './list-plan.js';
+import { ConstantResolver } from './constants.js';
 import { EngineError } from './errors.js';
 import { createDefaultTransformRegistry } from '../transforms/registry.js';
 
@@ -15,9 +16,9 @@ export class StructureMapEngine {
    * @param {{ evaluator: import('./evaluator.js').FhirPathEvaluator, env?: object,
    *   onLog?: (msg: unknown) => void, registry?: import('../transforms/registry.js').TransformRegistry,
    *   createInstance?: (type: string|undefined) => object, translate?: (source: unknown, mapUri: string) => object,
-   *   uuidFactory?: () => string }} deps
+   *   uuidFactory?: () => string, structureMapResolver?: (pattern: string) => object[]|undefined }} deps
    */
-  constructor({ evaluator, env, onLog, registry, createInstance, translate, uuidFactory } = {}) {
+  constructor({ evaluator, env, onLog, registry, createInstance, translate, uuidFactory, structureMapResolver } = {}) {
     this.evaluator = evaluator;
     this.env = env;
     this.onLog = onLog;
@@ -25,17 +26,20 @@ export class StructureMapEngine {
     this.createInstance = createInstance;
     this.translate = translate;
     this.uuidFactory = uuidFactory;
+    this.structureMapResolver = structureMapResolver;
   }
 
-  #ctx(doc) {
+  #ctx(doc, constants) {
     const ctx = {
       evaluator: this.evaluator,
-      env: this.env,
+      env: constants ? constants.asEnv() : this.env,
       onLog: this.onLog,
       registry: this.registry,
       createInstance: this.createInstance,
       translate: this.translate,
       uuidFactory: this.uuidFactory,
+      structureMapResolver: this.structureMapResolver,
+      constants,
     };
     ctx.invokeGroup = (name, args, listPlan) => invokeGroup(doc, name, args, ctx, listPlan);
     return ctx;
@@ -52,14 +56,18 @@ export class StructureMapEngine {
   /**
    * Runs a StructureMapDocument: binds `inputs` (by name) to the resolved group's
    * inputs, executes every effective rule, flushes deferred target-list assembly, and
-   * returns the (possibly mutated) values of every target-mode input.
+   * returns the (possibly mutated) values of every target-mode input. `doc.const[]`
+   * (§7.8.0.6) are resolved lazily off this top-level document for the whole run,
+   * including within groups invoked from imported maps — see PLAN.md Phase 5 for the
+   * documented simplification this implies.
    */
   run(doc, inputs, groupName) {
     const group = groupName ? doc.getGroup(groupName) : doc.defaultGroup;
     if (!group) throw new EngineError(`run: group "${groupName}" not found`);
 
-    const scope = bindGroupInputs(group, inputs);
-    const ctx = this.#ctx(doc);
+    const constants = new ConstantResolver(doc, this.evaluator, this.env);
+    const scope = bindGroupInputs(group, inputs, constants);
+    const ctx = this.#ctx(doc, constants);
     const listPlan = new ListPlan();
 
     for (const rule of getEffectiveRules(doc, group)) {
@@ -74,4 +82,5 @@ export class StructureMapEngine {
     return targets;
   }
 }
+
 

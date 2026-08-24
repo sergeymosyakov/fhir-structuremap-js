@@ -3,8 +3,8 @@
 import { EngineError } from './errors.js';
 import { VariableScope } from './scope.js';
 
-export function bindGroupInputs(group, inputs) {
-  const scope = new VariableScope();
+export function bindGroupInputs(group, inputs, constants = null) {
+  const scope = new VariableScope(null, constants);
   for (const input of group.input) {
     if (!(input.name in inputs)) {
       throw new EngineError(`Group "${group.name}": missing required input "${input.name}"`);
