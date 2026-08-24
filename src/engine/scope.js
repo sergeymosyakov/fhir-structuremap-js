@@ -5,6 +5,7 @@
 export class VariableScope {
   #parent;
   #vars = new Map();
+  #types = new Map();
   #constants;
 
   constructor(parent = null, constants = null) {
@@ -27,6 +28,22 @@ export class VariableScope {
     if (this.#vars.has(name)) return this.#vars.get(name);
     if (this.#parent) return this.#parent.get(name);
     return this.#constants ? this.#constants.resolve(name) : undefined;
+  }
+
+  /**
+   * Optional, best-effort declared-type tracking (Phase 6) — seeded from
+   * `group.input[].type` and explicit `RuleSource.type`/`create(type)` parameters, used
+   * only to drive default-mapping-group dispatch. Never required for correctness of
+   * value binding above.
+   */
+  setType(name, type) {
+    if (type) this.#types.set(name, type);
+    return this;
+  }
+
+  getType(name) {
+    if (this.#types.has(name)) return this.#types.get(name);
+    return this.#parent ? this.#parent.getType(name) : undefined;
   }
 
   /** A new scope nested under this one, e.g. for a rule's own variable bindings. */

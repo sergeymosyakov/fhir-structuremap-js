@@ -1,0 +1,14 @@
+{
+  "resourceType": "StructureDefinition",
+  "url": "http://example.org/StructureDefinition/Envelope",
+  "name": "Envelope",
+  "status": "active",
+  "kind": "resource",
+  "type": "Envelope",
+  "snapshot": {
+    "element": [
+      { "path": "Envelope", "type": [{ "code": "DomainResource" }] },
+      { "path": "Envelope.label", "type": [{ "code": "DisplayName" }] }
+    ]
+  }
+}

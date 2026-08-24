@@ -1,0 +1,14 @@
+{
+  "resourceType": "StructureDefinition",
+  "url": "http://example.org/StructureDefinition/DisplayName",
+  "name": "DisplayName",
+  "status": "active",
+  "kind": "complex-type",
+  "type": "DisplayName",
+  "snapshot": {
+    "element": [
+      { "path": "DisplayName", "type": [{ "code": "Element" }] },
+      { "path": "DisplayName.text", "type": [{ "code": "string" }] }
+    ]
+  }
+}

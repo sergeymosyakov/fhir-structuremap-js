@@ -48,7 +48,10 @@ export function matchRule(rule, scope, ctx) {
   return combos.map((combo) => {
     const childScope = scope.child();
     resolved.forEach(({ ruleSource }, i) => {
-      if (ruleSource.variable) childScope.set(ruleSource.variable, combo[i]);
+      if (ruleSource.variable) {
+        childScope.set(ruleSource.variable, combo[i]);
+        childScope.setType(ruleSource.variable, ruleSource.type); // author-declared type, if any
+      }
     });
     return childScope;
   });

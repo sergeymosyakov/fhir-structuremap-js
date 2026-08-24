@@ -204,22 +204,41 @@ Spec: §7.8.0.5 (Map Imports), §7.8.0.6 (Constants).
   `%name` in an `evaluate()` expression, a constant used directly as source `context`,
   and a dependent group invoked from an imported map).
 
-## Phase 6 — Type-aware features (incl. default mapping group dispatch, deferred from Phase 4)
+## Phase 6 — Type-aware features (incl. default mapping group dispatch, deferred from Phase 4) — DONE
 
 Spec: §7.8.0.4 (Structure Definition References — `queried`/`produced` modes),
 §7.8.0.8.3 (Type Wrangling), §7.8.0.9 (Simple Form / identity transform), §7.8.0.10
 (Default mapping groups, `<<types>>`/`<<type+>>`).
 
-- `structureDefinitionResolver` wiring for `type`-filtered sources and `cast()`/auto-create
-  type resolution.
-- Default mapping groups (`typeMode: types | type-and-types`) — engine looks up the
-  matching default group by (source type, target type) once real type resolution can
-  answer "what type does this target element expect"; drives the identity-transform
-  simple form (`src.element -> tgt.element;` and `src -> tgt: a, b, c;`).
-- `queried` / `produced` structure modes — the map asks the host (via callback) for
-  instances of a type, rather than receiving/creating them directly.
-- Tests against a couple of real, small StructureDefinitions (not a bundled profile
-  dump — fixtures only).
+- `src/engine/structure-definition.js` — minimal StructureDefinition helpers
+  (`getDeclaredChildKeys`, `resolveChildType`) over `snapshot.element[]`/
+  `differential.element[]` — not a validator, just enough to check "does this value's
+  own shape fit type X" and "what's the declared type of this child element".
+- `matchesType` (node-access.js) now checks structurally against an injected
+  `ctx.structureDefinitionResolver(type)` for complex values with no `resourceType` tag,
+  instead of always accepting them.
+- `VariableScope` gained parallel, best-effort declared-type tracking (`setType`/
+  `getType`) — seeded from `group.input[].type`, an explicit `RuleSource.type`, or an
+  explicit `create("Type")` call — used only to drive default-mapping-group dispatch,
+  never required for value binding.
+- `src/engine/default-mapping.js` (`findDefaultGroup`) + `src/engine/identity-shorthand.js`
+  (`applyIdentityShorthand`) — a target with no `transform`, in a rule with no
+  `dependent`/nested `rule[]`, resolves both ends' types (via the tracked scope types +
+  `structureDefinitionResolver`) and, if a matching `types`/`type-and-types` group
+  exists, auto-creates the target instance and invokes that group — the identity
+  transform simple form. Falls back to plain untyped auto-create (Phase 4's behavior)
+  whenever the types can't be resolved, rather than erroring.
+- `queried`/`produced` structure modes — the spec gives no dedicated concrete-syntax
+  hook beyond the Mapping Support API itself, so `ctx.queryInstances(type)` /
+  `ctx.produceInstance(type)` are exposed on the engine and reachable from any
+  registered transform (built-in or custom) — proven end to end in
+  `tests/engine/queried-produced.test.js`.
+- Tests: `tests/engine/{structure-definition,node-access,default-mapping}.test.js`
+  (unit-level) plus `tests/engine/engine-run-phase6.test.js` (full `run()` dispatching
+  Patient.name (HumanName) → Envelope.label (DisplayName) through a real default
+  group, and the graceful fallback when no default group matches) — all against small,
+  hand-written StructureDefinition fixtures in `tests/fixtures/`, never a bundled
+  profile dump.
 
 ## Phase 7 — FML concrete-syntax parser (optional round-trip layer)
 
