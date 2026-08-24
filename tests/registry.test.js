@@ -38,12 +38,19 @@ describe('createDefaultTransformRegistry', () => {
     expect(registry.names).toHaveLength(17);
   });
 
-  it('reserved handlers throw a not-yet-implemented error when invoked', () => {
+  it('wires every name to a real, distinct handler function', () => {
     const registry = createDefaultTransformRegistry();
-    expect(() => registry.get('evaluate')()).toThrow(/not yet implemented/);
+    for (const name of TRANSFORM_NAMES) {
+      expect(typeof registry.get(name)).toBe('function');
+    }
   });
 
-  it('a reserved handler can be overridden with a real implementation', () => {
+  it('dateOp is intentionally unimplemented — the spec itself leaves it undefined', () => {
+    const registry = createDefaultTransformRegistry();
+    expect(() => registry.get('dateOp')()).toThrow(/spec itself leaves/);
+  });
+
+  it('a default handler can be overridden with a custom implementation', () => {
     const registry = createDefaultTransformRegistry();
     registry.override('uuid', () => 'fixed-uuid');
     expect(registry.get('uuid')()).toBe('fixed-uuid');

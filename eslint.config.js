@@ -10,6 +10,7 @@ export default [
         console: 'readonly',
         URL: 'readonly',
         process: 'readonly',
+        crypto: 'readonly',
       },
     },
     rules: {
