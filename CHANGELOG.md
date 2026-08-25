@@ -11,6 +11,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `tests/integration/` suite: 5 realistic multi-feature scenarios through the full engine.
 - Direct multi-segment copy (`tgt.a = src.b.c`, no `as x` needed) — desugars into
   `evaluate(src, 'b.c')` instead of throwing.
+- `dateOp(date, '+'|'-', value, unit)` — implemented on top of FHIRPath's own
+  date/time arithmetic instead of throwing "not implemented".
 
 ### Fixed
 - `%constants` now resolve against the owning document of the currently-executing

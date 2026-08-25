@@ -133,4 +133,16 @@ describe('FML end-to-end — parsed text actually executes through the real engi
     const result = engine.run(doc, { src: { address: { city: 'Springfield' } }, tgt: {} });
     expect(result.tgt.city).toBe('Springfield');
   });
+
+  it('runs dateOp() through the full engine', () => {
+    const doc = parseFMLToDocument(`
+      map "u" = X
+      group main(source src, target tgt) {
+        src.admittedOn as d -> tgt.dischargeDeadline = dateOp(d, '+', 30, 'days');
+      }
+    `);
+    const engine = new StructureMapEngine({ evaluator: realEvaluator });
+    const result = engine.run(doc, { src: { admittedOn: '2024-01-01' }, tgt: {} });
+    expect(result.tgt.dischargeDeadline).toBe('2024-01-31');
+  });
 });

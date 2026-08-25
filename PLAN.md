@@ -426,6 +426,24 @@ a multi-segment `contextRef` into `evaluate(root, 'rest.path')`, reusing the
 already-injected FHIRPath evaluator instead of requiring a bound variable. Moved from
 README's "Known gaps" to "Supported". Tests: 313 pass (was 311).
 
+## Post-Phase-10 fix — implement dateOp() grounded in FHIRPath date arithmetic
+
+`dateOp` was left throwing "not implemented" because the StructureMap spec's own
+transform table lists its parameters as "??" — never defined upstream. On user
+challenge: rather than leave a real transform permanently unimplemented, grounded its
+parameter shape in FHIRPath's own standardized date/time arithmetic (FHIRPath spec
+§6.5.1) instead of inventing arbitrary syntax — the engine already hard-depends on an
+injected FHIRPath evaluator for everything else, so `@date +/- value unit` is the
+natural, non-arbitrary anchor for an underspecified transform. Verified the accepted
+unit vocabulary against the real `fhirpath` npm package before implementing (not
+guessed): calendar-duration words (year(s)/month(s)/week(s)/day(s)/hour(s)/minute(s)/
+second(s)/millisecond(s)) plus quoted UCUM short forms (`'wk'`/`'d'`/`'h'`/`'min'`/
+`'s'`/`'ms'`) — confirmed `$this`-based arithmetic on a raw string silently no-ops
+(returns garbage, no error) so the date is embedded as an `@`-prefixed FHIRPath literal
+instead, after a defensive format check. `src/transforms/functions/date-op.js`
+implements `dateOp(date, '+'|'-', value, unit)`. Moved from README's "Known gaps" to
+"Supported". Tests: 319 pass (was 313).
+
 ## Non-goals (explicitly out of scope, to keep the library self-sufficient and small)
 
 - No bundled StructureDefinitions/profile dumps for R4/R5/STU3 — always via injected
