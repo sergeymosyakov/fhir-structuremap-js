@@ -1,0 +1,31 @@
+{
+  "resourceType": "StructureMap",
+  "id": "example",
+  "url": "http://hl7.org/fhir/StructureMap/example",
+  "identifier": [{ "system": "urn:ietf:rfc:3986", "value": "urn:oid:2.16.840.1.113883.4.642.13.2" }],
+  "version": "5.0.0",
+  "name": "ExampleMap",
+  "title": "Example Map",
+  "status": "draft",
+  "experimental": true,
+  "date": "2017-03-09",
+  "publisher": "HL7 FHIR Standard",
+  "description": "Example Structure Map",
+  "group": [
+    {
+      "name": "Examples",
+      "documentation": "test -> testValue",
+      "input": [
+        { "name": "testSrc", "mode": "source" },
+        { "name": "testTgt", "mode": "target" }
+      ],
+      "rule": [
+        {
+          "name": "rule1",
+          "source": [{ "context": "testSrc", "type": "SourceClassA", "element": "test", "variable": "t" }],
+          "target": [{ "context": "testTgt", "element": "testValue", "transform": "copy" }]
+        }
+      ]
+    }
+  ]
+}
