@@ -121,4 +121,16 @@ describe('FML end-to-end — parsed text actually executes through the real engi
     // identity/auto-create pipeline, not a special-cased copy.
     expect(result.tgt).toEqual({ name: {}, gender: {}, birthDate: {} });
   });
+
+  it('runs a direct multi-segment copy (tgt.a = src.b.c) via the evaluate() desugar, no "as x" needed', () => {
+    const doc = parseFMLToDocument(`
+      map "u" = X
+      group main(source src, target tgt) {
+        src -> tgt.city = src.address.city;
+      }
+    `);
+    const engine = new StructureMapEngine({ evaluator: realEvaluator });
+    const result = engine.run(doc, { src: { address: { city: 'Springfield' } }, tgt: {} });
+    expect(result.tgt.city).toBe('Springfield');
+  });
 });

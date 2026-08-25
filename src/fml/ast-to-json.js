@@ -26,7 +26,11 @@ function convertTransform(transformAst, outerContext) {
   }
   if (transformAst.kind === 'contextRef') {
     if (transformAst.segments.length > 1) {
-      throw new FMLSyntaxError(`Copying from a nested path ("${transformAst.segments.join('.')}") requires binding it to a variable first (e.g. "as x") — direct multi-segment copy targets are not supported`);
+      // `tgt.a = src.b.c` — no bound variable for the nested path, so desugar into
+      // the equivalent evaluate(src, 'b.c') using the already-injected FHIRPath
+      // evaluator, rather than requiring "src.b.c as x" first.
+      const [root, ...rest] = transformAst.segments;
+      return { transform: 'evaluate', parameter: [{ valueId: root }, { valueString: rest.join('.') }] };
     }
     return { transform: 'copy', parameter: [{ valueId: transformAst.segments[0] }] };
   }
