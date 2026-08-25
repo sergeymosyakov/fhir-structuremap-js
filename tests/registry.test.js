@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { TRANSFORM_NAMES } from '../src/transforms/names.js';
 import { TransformRegistry, createDefaultTransformRegistry } from '../src/transforms/registry.js';
+import { realEvaluator } from './engine/real-evaluator.js';
 
 describe('TransformRegistry', () => {
   it('registers and retrieves a handler by name', () => {
@@ -45,9 +46,9 @@ describe('createDefaultTransformRegistry', () => {
     }
   });
 
-  it('dateOp is intentionally unimplemented — the spec itself leaves it undefined', () => {
+  it('dateOp is wired to a real handler grounded in FHIRPath date arithmetic', () => {
     const registry = createDefaultTransformRegistry();
-    expect(() => registry.get('dateOp')()).toThrow(/spec itself leaves/);
+    expect(registry.get('dateOp')({ evaluator: realEvaluator }, ['2020-01-01', '+', 1, 'day'])).toBe('2020-01-02');
   });
 
   it('a default handler can be overridden with a custom implementation', () => {

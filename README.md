@@ -88,9 +88,9 @@ All 8 implementation phases are complete:
 - Multi-source rule matching (cartesian permutation, same-rule context chaining),
   cardinality, `listMode` (source: `first`/`not_first`/`last`/`not_last`/`only_one`),
   `where`/`check`/`log`, `defaultValue`.
-- All 17 target transform functions (`create`, `copy`, `truncate`, `escape`, `cast`,
+- All 18 target transform functions (`create`, `copy`, `truncate`, `escape`, `cast`,
   `append`, `translate`, `reference`, `uuid`, `pointer`, `evaluate`, `cc`, `c`, `qty`,
-  `id`, `cp`) — `dateOp` intentionally excluded, see Known gaps.
+  `id`, `cp`, `dateOp`).
 - Target `listMode` (`first`/`share`/`last`/`single`) assembly, order-independent of
   rule execution order.
 - Nested rules, dependent rule/group invocation, `extends`, default mapping groups
@@ -110,16 +110,19 @@ All 8 implementation phases are complete:
 - Direct multi-segment copy (`tgt.a = src.b.c`, no `as x` binding needed) — desugared
   at parse time into `evaluate(src, 'b.c')`, reusing the already-injected FHIRPath
   evaluator rather than requiring a flat variable-name lookup.
+- `dateOp(date, '+'|'-', value, unit)` — the StructureMap spec's own table leaves this
+  transform's parameters undefined ("??"); grounded instead in FHIRPath's own
+  standardized date/time arithmetic (§6.5.1), since the engine already hard-depends on
+  an injected FHIRPath evaluator for everything else. Verified against the real
+  `fhirpath` npm package's accepted calendar-duration units (year(s)/month(s)/week(s)/
+  day(s)/hour(s)/minute(s)/second(s)/millisecond(s), plus the quoted UCUM short forms
+  `'wk'`/`'d'`/`'h'`/`'min'`/`'s'`/`'ms'`).
 - Validated against the official example StructureMaps published at
   [structuremap-examples.html](https://www.hl7.org/fhir/structuremap-examples.html)
   (see `tests/integration/hl7-examples.test.js`).
 
 ## Known gaps (honest, not silently guessed around)
 
-- **`dateOp`** — the spec's own transform table lists its parameters as `??`; never
-  defined upstream. Confirmed this isn't just our own gap: the official HAPI/HL7 Java
-  reference implementation *also* throws "not supported yet" for `DATEOP` — matching
-  that industry-wide unresolved state rather than inventing behavior.
 - **Dotted/complex `///` metadata properties** (e.g. `jurisdiction.coding.system`) are
   ignored — matching the reference implementation, which also silently drops any
   metadata name it doesn't special-case.

@@ -132,8 +132,31 @@ describe('reference / pointer', () => {
 });
 
 describe('dateOp', () => {
-  it('is intentionally unimplemented per the undefined spec entry', () => {
-    expect(() => fns.dateOp(ctx, [])).toThrow(/spec itself leaves/);
+  it('adds a calendar-duration quantity to a date', () => {
+    expect(fns.dateOp(ctx, ['2020-01-01', '+', 3, 'months'])).toBe('2020-04-01');
+    expect(fns.dateOp(ctx, ['2020-01-01', '+', 1, 'year'])).toBe('2021-01-01');
+  });
+
+  it('subtracts a calendar-duration quantity from a dateTime', () => {
+    // No explicit timezone in the input -> FHIRPath adds the local offset, so match
+    // the date/time prefix only (keeps the test stable across CI timezones).
+    expect(fns.dateOp(ctx, ['2020-01-15T10:00:00', '-', 2, 'days'])).toMatch(/^2020-01-13T10:00:00/);
+  });
+
+  it('accepts a quoted UCUM short unit form', () => {
+    expect(fns.dateOp(ctx, ['2020-01-01', '+', 1, 'wk'])).toBe('2020-01-08');
+  });
+
+  it('throws for an unsupported operation', () => {
+    expect(() => fns.dateOp(ctx, ['2020-01-01', '*', 1, 'day'])).toThrow(/unsupported operation/);
+  });
+
+  it('throws for an invalid date literal', () => {
+    expect(() => fns.dateOp(ctx, ['not-a-date', '+', 1, 'day'])).toThrow(/not a valid date/);
+  });
+
+  it('throws for an unsupported unit', () => {
+    expect(() => fns.dateOp(ctx, ['2020-01-01', '+', 1, 'fortnight'])).toThrow(/unsupported unit/);
   });
 });
 
