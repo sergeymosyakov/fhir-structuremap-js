@@ -373,6 +373,47 @@ Tests: 236 pass project-wide (226 from Phases 1-8 + 3 new constants-scoping test
 new identity-batch parser tests + 1 end-to-end test + 3 new metadata multi-line tests
 + existing suite adjustments). Lint clean.
 
+## Phase 10 — Coverage reporting + integration test suite — DONE
+
+- Added `vitest.config.js`: v8 coverage provider (text/html/json-summary reporters,
+  `coverage/` output, `include: ['src/**']`), matching the fhir-qb repo's convention.
+  Upgraded `vitest`/`@vitest/coverage-v8` 2.x -> 4.1.11 (fhir-qb's version) in the same
+  change — the old 2.x pulled in a vulnerable transitive `vite`/`esbuild`; 0 vulnerabilities
+  after the bump. `npm run test:coverage` script added.
+- CI (`ci.yml`): runs `npm run test:coverage` and uploads the `coverage/` directory as a
+  build artifact (downloadable from the Actions run — no GitHub Pages for this repo).
+- Coverage threshold locked at 97% (statements/branches/functions/lines) — comfortably
+  below the achieved ~99%/98%/100%/100%, leaving headroom while still failing CI on a
+  real regression.
+- Closed nearly every coverage gap the report surfaced with real, meaningful tests
+  (not padding) — each uncovered line was a genuine untested branch: cardinality
+  max-exceeded, unknown listMode, default-mapping type-mismatch branches, identity-shorthand
+  variable-binding, `ConstantResolver`'s Proxy fallback, unterminated block
+  comment/unterminated triple-quote/unrecognized escape in the lexer, the `evaluate()`
+  1-arg-no-comma FML form, `Group`/`Parameter`/`RuleTarget`/`validate.js` edge cases, and
+  several transform-function branch pairs (cast boolean 'false'/invalid, cc/qty optional
+  params, escape identical-format passthrough, cp's 'other' fallback, translate's
+  no-match `undefined` return, truncate's nullish-source passthrough).
+- New `tests/integration/` suite (5 files, 19 tests) — realistic, multi-feature composed
+  scenarios through the real `engine.run()`/FML pipeline, not isolated units:
+  `patient-demographics.test.js`, `multi-map-imports.test.js` (imports + Phase 9's
+  per-document constants together), `repeating-and-conditions.test.js` (every source
+  listMode + target `share`), `fml-authored-clinical-note.test.js` (a full FML-text
+  program: metadata, extends, dependent groups, identity-batch, typed default-mapping
+  dispatch), `error-paths.test.js` (cardinality/check/missing-group/circular-extends/
+  unknown-run-group/duplicate-first-claim/unbound-context, all through the full engine).
+- **Two real bugs found and fixed by the integration suite** (exactly why it's valuable
+  beyond unit coverage): (1) multi-line `"""..."""` metadata worked in `extractMetadata()`
+  isolation but broke the actual FML parse pipeline, because the lexer never learned to
+  skip un-prefixed continuation lines — fixed in `src/fml/lexer.js`. (2) The identity-batch
+  shorthand's desugared rules (Phase 9) never bound a source `variable`, so
+  `applyIdentityShorthand`'s typed default-mapping dispatch crashed with a bogus
+  "Constant \"undefined\" is not defined" instead of working — fixed in
+  `src/fml/ast-to-json.js` (`convertIdentityBatch` now binds a synthetic variable).
+
+Tests: 311 pass project-wide. Lint clean. Coverage: 99.24% statements / 98.36% branches
+/ 100% functions / 100% lines.
+
 ## Non-goals (explicitly out of scope, to keep the library self-sufficient and small)
 
 - No bundled StructureDefinitions/profile dumps for R4/R5/STU3 — always via injected

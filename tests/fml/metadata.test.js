@@ -13,6 +13,10 @@ describe('extractMetadata', () => {
     expect(extractMetadata(text)).toEqual({ title: 'My Map', status: 'active', experimental: true, version: '1.0.0' });
   });
 
+  it('parses a bare unquoted false', () => {
+    expect(extractMetadata('/// experimental = false')).toEqual({ experimental: false });
+  });
+
   it('accepts double-quoted values too', () => {
     expect(extractMetadata('/// title = "My Map"')).toEqual({ title: 'My Map' });
   });
@@ -52,6 +56,11 @@ describe('extractMetadata', () => {
       "/// status = 'active'",
     ].join('\n');
     expect(extractMetadata(text)).toEqual({ description: '\nmulti\nline\n', status: 'active' });
+  });
+
+  it('takes the rest of the text when a """ value is never closed', () => {
+    const text = ['/// description = """', 'unterminated'].join('\n');
+    expect(extractMetadata(text)).toEqual({ description: '\nunterminated' });
   });
 });
 

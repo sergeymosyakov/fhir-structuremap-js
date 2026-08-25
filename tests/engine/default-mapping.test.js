@@ -31,4 +31,14 @@ describe('findDefaultGroup', () => {
     const doc = docWith([{ name: 'g', typeMode: 'none', input: [{ name: 'a', type: 'HumanName', mode: 'source' }, { name: 'b', type: 'DisplayName', mode: 'target' }], rule: [] }]);
     expect(findDefaultGroup(doc, 'HumanName', 'DisplayName')).toBeUndefined();
   });
+
+  it('a "types" group does not match when the target type differs, even if the source type matches', () => {
+    const doc = docWith([{ name: 'g', typeMode: 'types', input: [{ name: 'a', type: 'HumanName', mode: 'source' }, { name: 'b', type: 'DisplayName', mode: 'target' }], rule: [] }]);
+    expect(findDefaultGroup(doc, 'HumanName', 'OtherType')).toBeUndefined();
+  });
+
+  it('a "type-and-types" group does not match when an explicit target type differs', () => {
+    const doc = docWith([{ name: 'g', typeMode: 'type-and-types', input: [{ name: 'a', type: 'HumanName', mode: 'source' }, { name: 'b', type: 'DisplayName', mode: 'target' }], rule: [] }]);
+    expect(findDefaultGroup(doc, 'HumanName', 'OtherType')).toBeUndefined();
+  });
 });

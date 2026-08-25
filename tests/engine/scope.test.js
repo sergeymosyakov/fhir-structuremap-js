@@ -34,4 +34,12 @@ describe('VariableScope', () => {
     expect(scope.get('nope')).toBeUndefined();
     expect(scope.has('nope')).toBe(false);
   });
+
+  it('getType() falls back to the parent scope\'s tracked type', () => {
+    const parent = new VariableScope();
+    parent.setType('a', 'Patient');
+    const child = parent.child();
+    expect(child.getType('a')).toBe('Patient');
+    expect(child.getType('nope')).toBeUndefined();
+  });
 });

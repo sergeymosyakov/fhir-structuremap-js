@@ -196,10 +196,30 @@ describe('parseFMLToJSON — rule targets / transforms', () => {
     expect(rule(json).target[0].parameter).toEqual([{ valueId: 'v' }, { valueString: "given.first() + ' ' + family" }]);
   });
 
+  it('parses evaluate() with only 1 argument (context-implicit shorthand, no comma)', () => {
+    const json = parseFMLToJSON(wrap("src.value as v -> tgt.note = evaluate(v);"));
+    expect(rule(json).target[0].transform).toBe('evaluate');
+    expect(rule(json).target[0].parameter).toEqual([{ valueId: 'v' }, { valueString: '' }]);
+  });
+
   it('parses the bare "(expr)" evaluate shorthand using the target context as implicit $this', () => {
     const json = parseFMLToJSON(wrap('src.value as v -> tgt.note = (v + 1);'));
     expect(rule(json).target[0].transform).toBe('evaluate');
     expect(rule(json).target[0].parameter).toEqual([{ valueId: 'tgt' }, { valueString: 'v + 1' }]);
+  });
+
+  it('parses a zero-argument invocation', () => {
+    const json = parseFMLToJSON(wrap('src.value as v -> tgt.id = uuid();'));
+    expect(rule(json).target[0]).toMatchObject({ transform: 'uuid', parameter: [] });
+  });
+
+  it('captures a quoted string inside evaluate()\'s raw 2nd argument without breaking on its own parens/commas', () => {
+    const json = parseFMLToJSON(wrap('src.value as v -> tgt.note = evaluate(v, "a (weird, string)" + x);'));
+    expect(rule(json).target[0].parameter[1].valueString).toBe('"a (weird, string)" + x');
+  });
+
+  it('throws on an unterminated evaluate() expression', () => {
+    expect(() => parseFMLToJSON(wrap('src.value as v -> tgt.note = evaluate(v, x + 1'))).toThrow(FMLSyntaxError);
   });
 
   it('parses a target variable alias', () => {
@@ -270,6 +290,12 @@ describe('parseFMLToJSON — dependent rules', () => {
     expect(rule(json).rule[0].source[0].context).toBe('v');
   });
 
+  it('parses "then invocation(...) { nested rules }" — invocation followed by its own block', () => {
+    const json = parseFMLToJSON(wrap('src.value as v -> tgt.value = v then helper(v, tgt) {\n  v.child as c -> tgt.other = c;\n};'));
+    expect(rule(json).dependent).toEqual([{ name: 'helper', parameter: [{ valueId: 'v' }, { valueId: 'tgt' }] }]);
+    expect(rule(json).rule).toHaveLength(1);
+  });
+
   it('parses a ruleName after the dependent clause', () => {
     const json = parseFMLToJSON(wrap('src.value as v -> tgt.value = v myRuleName;'));
     expect(rule(json).name).toBe('myRuleName');
@@ -307,6 +333,17 @@ describe('parseFMLToJSON — Simple Form: Identity Transform batch (src -> tgt: 
     const json = parseFMLToJSON(wrap('src.value : string as v -> tgt.value = v;'));
     expect(group(json).rule).toHaveLength(1);
     expect(group(json).rule[0].source[0].type).toBe('string');
+  });
+
+  it('binds a synthetic source variable on each desugared rule (required by identity-shorthand dispatch)', () => {
+    const json = parseFMLToJSON(wrap('src -> tgt: name, gender;'));
+    const rules = group(json).rule;
+    for (const r of rules) {
+      expect(typeof r.source[0].variable).toBe('string');
+      expect(r.source[0].variable.length).toBeGreaterThan(0);
+    }
+    // distinct across rules, and across separately-parsed documents (global counter).
+    expect(new Set(rules.map((r) => r.source[0].variable)).size).toBe(rules.length);
   });
 });
 

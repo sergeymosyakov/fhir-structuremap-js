@@ -28,6 +28,11 @@ describe('truncate', () => {
     expect(fns.truncate(ctx, ['hello world', 5])).toBe('hello');
   });
 
+  it('passes nullish source through unchanged', () => {
+    expect(fns.truncate(ctx, [undefined, 5])).toBeUndefined();
+    expect(fns.truncate(ctx, [null, 5])).toBeNull();
+  });
+
   it('throws when length is not a number', () => {
     expect(() => fns.truncate(ctx, ['hello', '5'])).toThrow(EngineError);
   });
@@ -42,6 +47,14 @@ describe('escape', () => {
     expect(fns.escape(ctx, ['&lt;a&gt;', 'xml', 'string'])).toBe('<a>');
   });
 
+  it('passes nullish source through unchanged', () => {
+    expect(fns.escape(ctx, [undefined, 'string', 'xml'])).toBeUndefined();
+  });
+
+  it('is a no-op passthrough when both formats are identical', () => {
+    expect(fns.escape(ctx, ['x', 'text', 'text'])).toBe('x');
+  });
+
   it('throws for an unsupported conversion', () => {
     expect(() => fns.escape(ctx, ['x', 'json', 'xml'])).toThrow(EngineError);
   });
@@ -53,6 +66,8 @@ describe('cast', () => {
     expect(fns.cast(ctx, ['42', 'integer'])).toBe(42);
     expect(fns.cast(ctx, ['4.2', 'decimal'])).toBe(4.2);
     expect(fns.cast(ctx, ['true', 'boolean'])).toBe(true);
+    expect(fns.cast(ctx, ['false', 'boolean'])).toBe(false);
+    expect(fns.cast(ctx, [true, 'boolean'])).toBe(true); // already a boolean -> passthrough
   });
 
   it('casts to Reference', () => {
@@ -65,6 +80,12 @@ describe('cast', () => {
 
   it('throws on an unparseable value', () => {
     expect(() => fns.cast(ctx, ['nope', 'integer'])).toThrow(EngineError);
+    expect(() => fns.cast(ctx, ['nope', 'decimal'])).toThrow(EngineError);
+    expect(() => fns.cast(ctx, ['nope', 'boolean'])).toThrow(EngineError);
+  });
+
+  it('throws for an unsupported target type', () => {
+    expect(() => fns.cast(ctx, ['x', 'bogus'])).toThrow(EngineError);
   });
 });
 
@@ -91,6 +112,11 @@ describe('translate', () => {
 
   it('throws for an unknown output kind', () => {
     expect(() => fns.translate({ ...ctx, translate: () => ({}) }, ['s', 'm', 'nope'])).toThrow(EngineError);
+  });
+
+  it('returns undefined when the injected callback finds no match', () => {
+    const t = { ...ctx, translate: () => undefined };
+    expect(fns.translate(t, ['src', 'map', 'code'])).toBeUndefined();
   });
 });
 
@@ -142,6 +168,10 @@ describe('cc (CodeableConcept)', () => {
   it('builds a coded CodeableConcept from system/code/display', () => {
     expect(fns.cc(ctx, ['sys', 'code1', 'Display'])).toEqual({ coding: [{ system: 'sys', code: 'code1', display: 'Display' }] });
   });
+
+  it('omits display when not provided', () => {
+    expect(fns.cc(ctx, ['sys', 'code1'])).toEqual({ coding: [{ system: 'sys', code: 'code1' }] });
+  });
 });
 
 describe('c (Coding)', () => {
@@ -163,6 +193,10 @@ describe('qty (Quantity)', () => {
     });
   });
 
+  it('omits system/code when not provided in the explicit form', () => {
+    expect(fns.qty(ctx, [5, 'mg'])).toEqual({ value: 5, unit: 'mg' });
+  });
+
   it('throws when natural text cannot be parsed', () => {
     expect(() => fns.qty(ctx, ['not a quantity'])).toThrow(EngineError);
   });
@@ -180,6 +214,10 @@ describe('cp (ContactPoint)', () => {
     expect(fns.cp(ctx, ['a@b.com'])).toEqual({ system: 'email', value: 'a@b.com' });
     expect(fns.cp(ctx, ['+1 555 123 4567'])).toEqual({ system: 'phone', value: '+1 555 123 4567' });
     expect(fns.cp(ctx, ['https://example.org'])).toEqual({ system: 'url', value: 'https://example.org' });
+  });
+
+  it('falls back to "other" when the content matches no known pattern', () => {
+    expect(fns.cp(ctx, ['just some text'])).toEqual({ system: 'other', value: 'just some text' });
   });
 
   it('uses the explicit system when given', () => {

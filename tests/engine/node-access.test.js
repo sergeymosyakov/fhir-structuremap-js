@@ -33,4 +33,9 @@ describe('matchesType', () => {
   it('is permissive when the resolver has no definition for the type', () => {
     expect(matchesType({ anything: 1 }, 'Unknown', resolver)).toBe(true);
   });
+
+  it('never matches null or undefined', () => {
+    expect(matchesType(null, 'string')).toBe(false);
+    expect(matchesType(undefined, 'string')).toBe(false);
+  });
 });

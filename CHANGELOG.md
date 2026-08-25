@@ -7,11 +7,19 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Identity Transform "Simple Form" batch shorthand (`src -> tgt: a, b, c;`).
 - `"""markdown"""` multi-line `///` metadata values (e.g. `description`).
+- Coverage reporting (`vitest.config.js`, v8 provider, 97% threshold, CI artifact upload).
+- `tests/integration/` suite: 5 realistic multi-feature scenarios through the full engine.
 
 ### Fixed
 - `%constants` now resolve against the owning document of the currently-executing
   group (§7.8.0.6), not always the top-level `run()` document — a real deviation
   found by cross-checking the official HAPI/HL7 Java reference implementation.
+- Multi-line `"""..."""` metadata broke the FML parser pipeline outside of
+  `extractMetadata()` isolation — lexer now skips un-prefixed continuation lines.
+- Identity-batch desugared rules didn't bind a source variable, crashing typed
+  default-mapping dispatch.
+- Upgraded `vitest`/`@vitest/coverage-v8` to 4.1.11, resolving transitive
+  `vite`/`esbuild` vulnerabilities in the old 2.x line.
 
 ## [1.0.0] - 2026-08-25
 

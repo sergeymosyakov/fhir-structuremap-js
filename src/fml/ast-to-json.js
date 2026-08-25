@@ -12,7 +12,9 @@ function literalToParam(lit) {
 
 function convertParam(p) {
   if (p.kind === 'literal') return literalToParam(p);
+  /* v8 ignore else -- defensive only: the parser never produces any other param kind */
   if (p.kind === 'idRef') return { valueId: p.name };
+  /* v8 ignore next */
   throw new FMLSyntaxError(`Unsupported parameter shape "${p.kind}"`);
 }
 
@@ -112,11 +114,14 @@ function convertRule(r) {
 
 /** Desugars a Simple Form: Identity Transform batch (`src -> tgt: a, b, c;`) into N
  * sibling plain identity rules (no explicit transform — same shape as `src.x -> tgt.x;`,
- * so it flows through the engine's existing identity-shorthand/auto-create dispatch). */
+ * so it flows through the engine's existing identity-shorthand/auto-create dispatch).
+ * Each source binds a synthetic variable — required by identity-shorthand dispatch
+ * (applyIdentityShorthand reads the matched value via `source.variable`), not just
+ * cosmetic. */
 function convertIdentityBatch(b) {
   return b.elements.map((element) => ({
     name: b.name ? `${b.name}_${element}` : element,
-    source: [{ context: b.sourceContext, element }],
+    source: [{ context: b.sourceContext, element, variable: `_batch${syntheticCounter++}` }],
     target: [{ context: b.targetContext, element }],
     rule: [],
     dependent: [],
