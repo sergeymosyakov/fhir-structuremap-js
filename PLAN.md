@@ -293,13 +293,37 @@ cases) plus `tests/fml/end-to-end.test.js`, which parses real FML text and runs 
 through the actual `StructureMapEngine` — proving the parser's output isn't just
 shaped correctly but genuinely executable. 221 tests pass project-wide.
 
-## Phase 8 — Hardening, docs, packaging
+## Phase 8 — Hardening, docs, packaging — DONE
 
-- Run against official FHIR StructureMap test/example resources
-  (structuremap-examples.html) as an integration/regression suite.
-- Public API docs (README), versioned CHANGELOG, npm publish config.
-- Explicit "supported subset / known gaps" section in the README — honesty about
-  coverage is part of "full spec support", not an afterthought.
+- Ran the engine against the two official example StructureMaps published at
+  [structuremap-examples.html](https://www.hl7.org/fhir/structuremap-examples.html)
+  (saved verbatim, narrative HTML stripped, as `tests/fixtures/hl7-official/*.json`),
+  wired into `tests/integration/hl7-examples.test.js`.
+- **Real bug found and fixed**: `evaluate()` assumed exactly 2 parameters
+  (`evaluate(resource, expr)`), but HL7's own `supplyrequest-transform` example uses the
+  spec's documented 1-parameter, context-implicit shorthand — `evaluate('draft')`
+  (§7.8.0.8.2, "no explicit context ... implicit through $this"). Fixed in
+  `src/transforms/functions/evaluate.js` to detect arity and treat a single argument as
+  the expression with `resource=undefined`; unit-level regression test added alongside
+  the existing `evaluateTransform` suite.
+- **Real quirk in HL7's own example, documented not "fixed"**: `supplyrequest-transform`
+  has both a `category` rule and a `quantity` rule that both target `target.category`
+  (the `quantity` rule almost certainly meant `target.quantity` — likely a typo in HL7's
+  published example). Rules execute in array order, so the later parameter-less
+  `copy()` overwrites the earlier value with `undefined`. Per "never guess", this is
+  faithfully reproduced and called out in the test comments rather than "corrected".
+- Public API docs: [`README.md`](README.md) — install, quick-start (JSON + FML text),
+  the full injected Mapping Support API table, architecture summary, and explicit
+  "Supported" / "Known gaps" sections.
+- [`CHANGELOG.md`](CHANGELOG.md) added (Keep a Changelog format, `Unreleased` — no npm
+  version has actually been published yet).
+- `package.json` metadata (name, description, `exports`, `files`, `repository`,
+  `keywords`, `license`) reviewed and already publish-ready from Phase 1; no publish
+  workflow or version bump added — per this repo's own rule ("No npm/release automation
+  for now"), actual `npm publish` stays a manual, explicitly-authorized future step.
+
+Tests: 226 pass project-wide (221 from Phases 1-7 + 1 new unit test for the `evaluate()`
+1-param fix + 4 new HL7-official-example integration tests). Lint clean.
 
 ## Non-goals (explicitly out of scope, to keep the library self-sufficient and small)
 

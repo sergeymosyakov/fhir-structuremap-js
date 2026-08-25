@@ -128,6 +128,10 @@ describe('evaluateTransform', () => {
     expect(fns.evaluateTransform(ctx, [{}, 'missing'])).toEqual([]);
     expect(fns.evaluateTransform(ctx, [{ a: 5 }, 'a'])).toEqual([5]);
   });
+
+  it('supports the 1-parameter context-implicit shorthand (real HL7 examples use this)', () => {
+    expect(fns.evaluateTransform(ctx, ["'draft'"])).toEqual(['draft']);
+  });
 });
 
 describe('cc (CodeableConcept)', () => {
