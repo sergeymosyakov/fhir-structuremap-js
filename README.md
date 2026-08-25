@@ -76,9 +76,6 @@ whichever of these your use case needs to `new StructureMapEngine({ ... })`:
   never evaluates anything.
 - **One concern per file** across `src/model/`, `src/engine/`, `src/transforms/`, `src/fml/`.
 
-See [`PLAN.md`](PLAN.md) for the full phased build history and the spec citations behind
-every design decision.
-
 ## Supported
 
 All 8 implementation phases are complete:
@@ -128,19 +125,14 @@ All 8 implementation phases are complete:
   at the `map` statement so a coincidental `///`-shaped line later in the file (e.g. a
   rule-body comment) is never mistaken for metadata.
 
-## Known gaps (honest, not silently guessed around)
-
-- **Auto-create is untyped by default** — without an injected
-  `structureDefinitionResolver` that resolves both ends' types, a transform-less target
-  auto-creates a plain `{}` rather than dispatching to the identity-transform's
-  default-mapping-group. Not a defect — this is the expected result of the "no
-  StructureDefinitions bundled" design choice below when no resolver is supplied.
-
 ## Design non-goals (deliberate, not gaps)
 
 - **No bundled StructureDefinitions, FHIRPath engine, or terminology client** — always
   via an injected resolver/evaluator/callback, to keep the library small and
-  host-agnostic. See PLAN.md "Non-goals".
+  host-agnostic. See PLAN.md "Non-goals". One consequence: auto-create is untyped by
+  default — without an injected `structureDefinitionResolver` that resolves both ends'
+  types, a transform-less target auto-creates a plain `{}` rather than dispatching to
+  the identity-transform's default-mapping-group.
 
 ## License
 
