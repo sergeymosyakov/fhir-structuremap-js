@@ -120,12 +120,16 @@ All 8 implementation phases are complete:
 - Validated against the official example StructureMaps published at
   [structuremap-examples.html](https://www.hl7.org/fhir/structuremap-examples.html)
   (see `tests/integration/hl7-examples.test.js`).
+- Dotted/repeating `///` metadata properties (`name{.property}*`, e.g.
+  `jurisdiction.coding.system`) per §7.8.0.3, incl. repeat detection ("additional
+  items with the same name represent repeats") — for the two complex StructureMap
+  metadata fields realistically used in hand-written FML, `jurisdiction`
+  (CodeableConcept[]) and `contact` (ContactDetail[]); metadata parsing correctly stops
+  at the `map` statement so a coincidental `///`-shaped line later in the file (e.g. a
+  rule-body comment) is never mistaken for metadata.
 
 ## Known gaps (honest, not silently guessed around)
 
-- **Dotted/complex `///` metadata properties** (e.g. `jurisdiction.coding.system`) are
-  ignored — matching the reference implementation, which also silently drops any
-  metadata name it doesn't special-case.
 - **Auto-create is untyped by default** — without an injected
   `structureDefinitionResolver` that resolves both ends' types, a transform-less target
   auto-creates a plain `{}` rather than dispatching to the identity-transform's
