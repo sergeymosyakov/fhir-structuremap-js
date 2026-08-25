@@ -51,7 +51,18 @@ export class Lexer {
       if (ch === undefined) return;
       if (/\s/.test(ch)) { this.#advance(); continue; }
       if (ch === '/' && this.#peek(1) === '/') {
+        const lineStart = this.#pos;
         while (this.#peek() !== undefined && this.#peek() !== '\n') this.#advance();
+        // A `/// name = """` metadata line left an odd number of `"""` markers open —
+        // its multi-line markdown body (§7.8.0.3) has no `///` prefix on continuation
+        // lines, so keep skipping raw text (across newlines) through the closing
+        // `"""`, otherwise the parser would choke on the prose as if it were FML.
+        const tripleCount = (this.#text.slice(lineStart, this.#pos).match(/"""/g) ?? []).length;
+        if (tripleCount % 2 === 1) {
+          while (this.#peek() !== undefined
+            && !(this.#peek() === '"' && this.#peek(1) === '"' && this.#peek(2) === '"')) this.#advance();
+          if (this.#peek() !== undefined) { this.#advance(); this.#advance(); this.#advance(); }
+        }
         continue;
       }
       if (ch === '/' && this.#peek(1) === '*') {

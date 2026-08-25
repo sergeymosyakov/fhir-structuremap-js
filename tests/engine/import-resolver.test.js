@@ -30,6 +30,12 @@ describe('resolveImportedGroup', () => {
     expect(found.group.name).toBe('helper');
   });
 
+  it('tolerates a structureMapResolver that returns undefined for a pattern', () => {
+    const doc = docWith([{ name: 'main', input: [{ name: 'a', mode: 'source' }], rule: [] }], ['http://example.org/StructureMap/unmatched']);
+    const ctx = { structureMapResolver: () => undefined };
+    expect(resolveImportedGroup(doc, 'missing', ctx)).toBeUndefined();
+  });
+
   it('does not infinite-loop on a circular import chain', () => {
     const a = docWith([{ name: 'gA', input: [{ name: 'x', mode: 'source' }], rule: [] }], ['b']);
     const b = docWith([{ name: 'gB', input: [{ name: 'x', mode: 'source' }], rule: [] }], ['a']);

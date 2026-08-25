@@ -47,6 +47,14 @@ describe('applyTarget', () => {
     expect(scope.get('v')).toBe('final');
   });
 
+  it('tracks the created type from an explicit create("Type") call for later identity-shorthand dispatch', () => {
+    const tgt = {};
+    const scope = scopeWith({ tgt });
+    const rt = RuleTarget.fromJSON({ context: 'tgt', element: 'subject', variable: 'v', transform: 'create', parameter: [{ valueString: 'Patient' }] });
+    applyTarget(rt, scope, ctx, new ListPlan(), 'r');
+    expect(scope.getType('v')).toBe('Patient');
+  });
+
   it('evaluate() with an empty result creates nothing', () => {
     const tgt = {};
     const scope = scopeWith({ tgt, src: {} });
@@ -85,5 +93,40 @@ describe('applyTarget', () => {
     const rt = RuleTarget.fromJSON({ context: 'tgt', variable: 'v', transform: 'copy', parameter: [{ valueString: 'x' }] });
     applyTarget(rt, scope, ctx, new ListPlan(), 'r');
     expect(scope.get('v')).toBe('x');
+  });
+
+  it('a target with no element and no variable just computes the value', () => {
+    const scope = scopeWith({ tgt: {} });
+    const rt = RuleTarget.fromJSON({ context: 'tgt', transform: 'copy', parameter: [{ valueString: 'x' }] });
+    expect(applyTarget(rt, scope, ctx, new ListPlan(), 'r')).toBe('x');
+  });
+
+  it('reuses an already-populated element without a variable (idempotent auto-create)', () => {
+    const existing = { name: 'preset' };
+    const tgt = { address: existing };
+    const scope = scopeWith({ tgt });
+    const rt = RuleTarget.fromJSON({ context: 'tgt', element: 'address' });
+    expect(applyTarget(rt, scope, ctx, new ListPlan(), 'r')).toBe(existing);
+    expect(tgt.address).toBe(existing);
+  });
+
+  it('reuses an already-populated element and binds its variable too', () => {
+    const existing = { name: 'preset' };
+    const tgt = { address: existing };
+    const scope = scopeWith({ tgt });
+    const rt = RuleTarget.fromJSON({ context: 'tgt', element: 'address', variable: 'v' });
+    applyTarget(rt, scope, ctx, new ListPlan(), 'r');
+    expect(scope.get('v')).toBe(existing);
+  });
+
+  it('initializes a fresh array for an explicit listMode target and binds its variable', () => {
+    const tgt = {};
+    const scope = scopeWith({ tgt, src: { a: [1, 2] } });
+    const rt = RuleTarget.fromJSON({ context: 'tgt', element: 'tag', variable: 'v', transform: 'evaluate', parameter: [{ valueId: 'src' }, { valueString: 'a' }], listMode: ['first'] });
+    const plan = new ListPlan();
+    applyTarget(rt, scope, ctx, plan, 'r');
+    plan.flush();
+    expect(Array.isArray(tgt.tag)).toBe(true);
+    expect(scope.get('v')).toBe(2);
   });
 });

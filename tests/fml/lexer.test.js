@@ -72,4 +72,13 @@ describe('tokenize', () => {
   it('throws on an unterminated string', () => {
     expect(() => tokenize("'unterminated")).toThrow(FMLSyntaxError);
   });
+
+  it('throws on an unterminated block comment', () => {
+    expect(() => tokenize('a /* unterminated')).toThrow(/Unterminated block comment/);
+  });
+
+  it('passes an unrecognized escape sequence through literally', () => {
+    const [t] = tokenize("'a\\qb'");
+    expect(t.value).toBe('aqb');
+  });
 });

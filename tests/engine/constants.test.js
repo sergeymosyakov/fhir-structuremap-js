@@ -14,6 +14,14 @@ describe('ConstantResolver', () => {
     expect(resolver.resolve('status')).toBe('final');
   });
 
+  it('asEnv() falls through to the base env for non-constant property access', () => {
+    const doc = docWithConsts([['status', "'final'"]]);
+    const resolver = new ConstantResolver(doc, realEvaluator, { seed: 42 });
+    const env = resolver.asEnv();
+    expect(env.seed).toBe(42);
+    expect(env.notAConstant).toBeUndefined();
+  });
+
   it('evaluates each constant only once (cached)', () => {
     const evaluate = vi.fn(realEvaluator.evaluate);
     const doc = docWithConsts([['x', '1 + 1']]);
