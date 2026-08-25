@@ -10,8 +10,10 @@
 //     to tokenize FHIRPath itself (which this lexer does not attempt to fully cover).
 //  2. The bare `(expr)` target shorthand for `evaluate($this, expr)` (§7.8.0.8.2) is
 //     supported even though the published `transform` grammar rule omits it.
-// Multi-level `src -> tgt: a, b, c;` shorthand (not in the published grammar at all)
-// is intentionally NOT supported — see PLAN.md Phase 7.
+// The "Simple Form: Identity Transform" batch shorthand (`src -> tgt: a, b, c;`,
+// hl7.org/fhir/R5/mapping-language.html#simple) IS supported (see #parseIdentityBatch)
+// — verified against the official HAPI/HL7 Java reference implementation, which
+// parses this exact shape despite it not appearing in the published mapping.g4.
 import { tokenize } from './lexer.js';
 import { FMLSyntaxError } from './fml-syntax-error.js';
 
@@ -253,16 +255,35 @@ class Parser {
   }
 
   // rule : ruleSources ('->' ruleTargets)? dependent? ruleName? ';'
+  //      | ruleSources '->' ruleTarget ':' identifier (',' identifier)* ruleName? ';'
+  //        (Simple Form: Identity Transform batch — hl7.org/fhir/R5/mapping-language.html#simple —
+  //        only recognized when both source and target are bare contexts with no
+  //        element/dot, matching the reference implementation's own restriction)
   #parseRule() {
     const sources = this.#parseRuleSources();
     let targets = [];
     if (this.#isPunct('->')) { this.#next(); targets = this.#parseRuleTargets(); }
+    if (this.#isPunct(':') && sources.length === 1 && !sources[0].element
+        && targets.length === 1 && targets[0].elementChain.length === 0) {
+      return this.#parseIdentityBatch(sources[0], targets[0]);
+    }
     let dependent = null;
     if (this.#isKeyword('then')) dependent = this.#parseDependent();
     let name;
     if (!this.#isPunct(';')) name = this.#expectIdentLike();
     this.#expectPunct(';');
     return { sources, targets, dependent, name };
+  }
+
+  #parseIdentityBatch(source, target) {
+    this.#expectPunct(':');
+    const elements = [this.#expectIdentLike()];
+    while (this.#isPunct(',')) { this.#next(); elements.push(this.#expectIdentLike()); }
+    let name;
+    if (this.#peek().type === 'STRING') name = this.#next().value;
+    else if (!this.#isPunct(';')) name = this.#expectIdentLike();
+    this.#expectPunct(';');
+    return { identityBatch: { sourceContext: source.context, targetContext: target.context, elements, name } };
   }
 
   #parseRuleSources() {

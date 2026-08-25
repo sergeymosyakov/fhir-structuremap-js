@@ -276,6 +276,40 @@ describe('parseFMLToJSON — dependent rules', () => {
   });
 });
 
+describe('parseFMLToJSON — Simple Form: Identity Transform batch (src -> tgt: a, b, c;)', () => {
+  const wrap = (ruleText) => `map "u" = X\ngroup g(source src, target tgt) {\n${ruleText}\n}`;
+
+  it('desugars into one identity rule per element', () => {
+    const json = parseFMLToJSON(wrap('src -> tgt: name, gender, birthDate;'));
+    const rules = group(json).rule;
+    expect(rules).toHaveLength(3);
+    expect(rules.map((r) => r.source[0].element)).toEqual(['name', 'gender', 'birthDate']);
+    expect(rules.map((r) => r.target[0].element)).toEqual(['name', 'gender', 'birthDate']);
+    for (const r of rules) {
+      expect(r.source[0].context).toBe('src');
+      expect(r.target[0].context).toBe('tgt');
+      expect(r.target[0].transform).toBeUndefined(); // plain identity form, not an explicit create()
+    }
+  });
+
+  it('accepts an optional trailing ruleName used as a name prefix', () => {
+    const json = parseFMLToJSON(wrap('src -> tgt: name, gender "demographics";'));
+    expect(group(json).rule.map((r) => r.name)).toEqual(['demographics_name', 'demographics_gender']);
+  });
+
+  it('accepts a quoted ruleName', () => {
+    const json = parseFMLToJSON(wrap('src -> tgt: name "demographics";'));
+    expect(group(json).rule[0].name).toBe('demographics_name');
+  });
+
+  it('is not triggered when the source or target already has an element', () => {
+    // A bare `:` here is the ordinary source-type-annotation colon, not the batch form.
+    const json = parseFMLToJSON(wrap('src.value : string as v -> tgt.value = v;'));
+    expect(group(json).rule).toHaveLength(1);
+    expect(group(json).rule[0].source[0].type).toBe('string');
+  });
+});
+
 describe('parseFMLToJSON — comments and whitespace', () => {
   it('ignores line and block comments anywhere', () => {
     const json = parseFMLToJSON(`

@@ -13,6 +13,8 @@ import { EngineError } from './errors.js';
 import { createDefaultTransformRegistry } from '../transforms/registry.js';
 
 export class StructureMapEngine {
+  #constantsCache;
+
   /**
    * @param {{ evaluator: import('./evaluator.js').FhirPathEvaluator, env?: object,
    *   onLog?: (msg: unknown) => void, registry?: import('../transforms/registry.js').TransformRegistry,
@@ -36,13 +38,26 @@ export class StructureMapEngine {
     this.structureDefinitionResolver = structureDefinitionResolver;
     this.queryInstances = queryInstances;
     this.produceInstance = produceInstance;
+    this.#constantsCache = new WeakMap();
   }
 
-  #ctx(doc, constants) {
+  /** One ConstantResolver per document (§7.8.0.6 scopes const names to "a single
+   * mapping source file") — cached so repeated invocations of groups in the same
+   * imported map reuse the same lazy/circular-safe resolver instance. */
+  #constantsFor(doc) {
+    if (!doc) return new ConstantResolver(doc, this.evaluator, this.env); // e.g. matchRule() called standalone, without a document
+    if (!this.#constantsCache.has(doc)) {
+      this.#constantsCache.set(doc, new ConstantResolver(doc, this.evaluator, this.env));
+    }
+    return this.#constantsCache.get(doc);
+  }
+
+  #ctx(doc) {
+    const constants = this.#constantsFor(doc);
     const ctx = {
       doc,
       evaluator: this.evaluator,
-      env: constants ? constants.asEnv() : this.env,
+      env: constants.asEnv(),
       onLog: this.onLog,
       registry: this.registry,
       createInstance: this.createInstance,
@@ -55,6 +70,7 @@ export class StructureMapEngine {
       constants,
     };
     ctx.invokeGroup = (name, args, listPlan) => invokeGroup(doc, name, args, ctx, listPlan);
+    ctx.forDoc = (d) => this.#ctx(d);
     return ctx;
   }
 
@@ -70,17 +86,15 @@ export class StructureMapEngine {
    * Runs a StructureMapDocument: binds `inputs` (by name) to the resolved group's
    * inputs, executes every effective rule, flushes deferred target-list assembly, and
    * returns the (possibly mutated) values of every target-mode input. `doc.const[]`
-   * (§7.8.0.6) are resolved lazily off this top-level document for the whole run,
-   * including within groups invoked from imported maps — see PLAN.md Phase 5 for the
-   * documented simplification this implies.
+   * (§7.8.0.6) are resolved per-document — a group invoked from an imported map sees
+   * that map's own constants, not the top-level run() document's.
    */
   run(doc, inputs, groupName) {
     const group = groupName ? doc.getGroup(groupName) : doc.defaultGroup;
     if (!group) throw new EngineError(`run: group "${groupName}" not found`);
 
-    const constants = new ConstantResolver(doc, this.evaluator, this.env);
-    const scope = bindGroupInputs(group, inputs, constants);
-    const ctx = this.#ctx(doc, constants);
+    const ctx = this.#ctx(doc);
+    const scope = bindGroupInputs(group, inputs, ctx.constants);
     const listPlan = new ListPlan();
 
     for (const rule of getEffectiveRules(doc, group)) {

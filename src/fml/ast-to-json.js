@@ -110,13 +110,26 @@ function convertRule(r) {
   };
 }
 
+/** Desugars a Simple Form: Identity Transform batch (`src -> tgt: a, b, c;`) into N
+ * sibling plain identity rules (no explicit transform — same shape as `src.x -> tgt.x;`,
+ * so it flows through the engine's existing identity-shorthand/auto-create dispatch). */
+function convertIdentityBatch(b) {
+  return b.elements.map((element) => ({
+    name: b.name ? `${b.name}_${element}` : element,
+    source: [{ context: b.sourceContext, element }],
+    target: [{ context: b.targetContext, element }],
+    rule: [],
+    dependent: [],
+  }));
+}
+
 function convertGroup(g) {
   return {
     name: g.name,
     extends: g.extends,
     typeMode: g.typeMode,
     input: g.inputs.map((i) => ({ name: i.name, mode: i.mode, type: i.type })),
-    rule: g.rules.map(convertRule),
+    rule: g.rules.flatMap((r) => (r.identityBatch ? convertIdentityBatch(r.identityBatch) : [convertRule(r)])),
   };
 }
 
