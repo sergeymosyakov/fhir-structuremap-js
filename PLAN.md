@@ -325,6 +325,54 @@ shaped correctly but genuinely executable. 221 tests pass project-wide.
 Tests: 226 pass project-wide (221 from Phases 1-7 + 1 new unit test for the `evaluate()`
 1-param fix + 4 new HL7-official-example integration tests). Lint clean.
 
+## Phase 9 — Spec-fidelity fixes (cross-checked against the reference implementation) — DONE
+
+Re-examined every item in README's "Known gaps" against the official HAPI/HL7 Java
+reference implementation (`org.hl7.fhir.r5.utils.structuremap.StructureMapUtilities`,
+fetched from `hapifhir/org.hl7.fhir.core`) instead of guessing. Result: some "gaps"
+were real missed features; some turned out to match the reference implementation's own
+behavior and were mislabeled.
+
+**Fixed (real gaps, now closed):**
+- **Identity Transform "Simple Form" batch** (`src -> tgt: a, b, c ["name"];`,
+  §"Simple Form: Identity Transform") — confirmed as a real, spec-documented shorthand
+  the reference implementation parses (desugars into N sibling identity rules); our
+  parser previously rejected it outright with an incorrect "not in the grammar" claim.
+  Implemented in `src/fml/parser.js` (`#parseIdentityBatch`) + `src/fml/ast-to-json.js`
+  (`convertIdentityBatch`) — desugars into plain no-transform identity rules, reusing
+  the existing identity-shorthand/untyped-auto-create dispatch rather than a bespoke
+  copy path.
+- **Constants scoped per-document** (§7.8.0.6: const names scoped to "a single mapping
+  source file") — `StructureMapEngine` now caches one `ConstantResolver` per document
+  (`#constantsFor`, `WeakMap`-keyed) and `group-invoker.js` re-scopes `ctx` to the
+  invoked group's *owning* document (`ctx.forDoc(owningDoc)`), confirmed against the
+  reference implementation's own per-`map` constant resolution. Previously all
+  `%constants` resolved against the top-level `run()` document only.
+- **Multi-line `"""markdown"""` metadata values** (e.g. `/// description = """..."""`)
+  — the reference implementation's `render()` emits exactly this form for multi-line
+  descriptions; `src/fml/metadata.js` now scans past `///`-per-line and captures raw
+  verbatim text up to the closing `"""`.
+
+**Reclassified (not gaps — reference implementation does the same):**
+- `dateOp` — the official reference implementation also throws "not supported yet".
+  README reworded to cite this instead of apologizing.
+- Dotted/complex `///` metadata properties (`jurisdiction.coding.system`) — the
+  reference implementation's own parser silently drops any metadata name it doesn't
+  special-case; matching, not deviating.
+- "No bundled StructureDefinitions/FHIRPath/terminology" moved to a new README
+  "Design non-goals" section — an architectural choice, not a shortfall.
+
+**Left as a documented, deliberately-not-guessed limitation:**
+- Direct multi-segment `copy` (`tgt.a = src.b.c` without `as x`) — the reference
+  parser's grammar accepts a dotted parameter, but its executor (`getParam`) does a
+  flat variable-name lookup with no path traversal, so it's unclear this path actually
+  works there either. Not replicated without a real test against the reference
+  implementation confirming intended behavior.
+
+Tests: 236 pass project-wide (226 from Phases 1-8 + 3 new constants-scoping tests + 4
+new identity-batch parser tests + 1 end-to-end test + 3 new metadata multi-line tests
++ existing suite adjustments). Lint clean.
+
 ## Non-goals (explicitly out of scope, to keep the library self-sufficient and small)
 
 - No bundled StructureDefinitions/profile dumps for R4/R5/STU3 — always via injected

@@ -73,4 +73,57 @@ describe('StructureMapEngine.run — imports', () => {
     const result = engine.run(mainDoc, { src: 'Alice', tgt: {} });
     expect(result.tgt.name).toBe('Alice');
   });
+
+  it('resolves %constants against the owning document of the invoked group, not the caller\'s (§7.8.0.6)', () => {
+    const helperDoc = docWith({
+      name: 'helper-map',
+      const: [{ name: 'suffix', value: "' (helper)'" }],
+      group: [{
+        name: 'setName',
+        input: [{ name: 'src', mode: 'source' }, { name: 'tgt', mode: 'target' }],
+        rule: [{ name: 'r', source: [{ context: 'src' }], target: [{ context: 'tgt', element: 'name', transform: 'evaluate', parameter: [{ valueId: 'src' }, { valueString: '$this + %suffix' }] }] }],
+      }],
+    });
+    const mainDoc = docWith({
+      import: ['http://example.org/StructureMap/helper-map'],
+      group: [{
+        name: 'main',
+        input: [{ name: 'src', mode: 'source' }, { name: 'tgt', mode: 'target' }],
+        rule: [{ name: 'r', source: [{ context: 'src' }], dependent: [{ name: 'setName', parameter: [{ valueId: 'src' }, { valueId: 'tgt' }] }] }],
+      }],
+    });
+
+    const engine = new StructureMapEngine({
+      evaluator: realEvaluator,
+      structureMapResolver: (url) => (url.endsWith('helper-map') ? [helperDoc] : []),
+    });
+    const result = engine.run(mainDoc, { src: 'Alice', tgt: {} });
+    expect(result.tgt.name).toBe('Alice (helper)');
+  });
+
+  it('does not leak a constant from the caller\'s document into an imported group\'s scope', () => {
+    const helperDoc = docWith({
+      name: 'helper-map',
+      group: [{
+        name: 'setName',
+        input: [{ name: 'src', mode: 'source' }, { name: 'tgt', mode: 'target' }],
+        rule: [{ name: 'r', source: [{ context: 'src' }], target: [{ context: 'tgt', element: 'name', transform: 'evaluate', parameter: [{ valueId: 'src' }, { valueString: '%onlyInMain' }] }] }],
+      }],
+    });
+    const mainDoc = docWith({
+      import: ['http://example.org/StructureMap/helper-map'],
+      const: [{ name: 'onlyInMain', value: "'top-level-value'" }],
+      group: [{
+        name: 'main',
+        input: [{ name: 'src', mode: 'source' }, { name: 'tgt', mode: 'target' }],
+        rule: [{ name: 'r', source: [{ context: 'src' }], dependent: [{ name: 'setName', parameter: [{ valueId: 'src' }, { valueId: 'tgt' }] }] }],
+      }],
+    });
+
+    const engine = new StructureMapEngine({
+      evaluator: realEvaluator,
+      structureMapResolver: (url) => (url.endsWith('helper-map') ? [helperDoc] : []),
+    });
+    expect(() => engine.run(mainDoc, { src: 'Alice', tgt: {} })).toThrow(/onlyInMain/);
+  });
 });

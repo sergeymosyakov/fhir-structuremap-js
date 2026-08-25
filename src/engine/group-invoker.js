@@ -26,8 +26,12 @@ export function invokeGroup(doc, groupName, argValues, ctx, listPlan) {
   if (!found) throw new EngineError(`invokeGroup: unknown group "${groupName}"`);
   const { doc: owningDoc, group } = found;
 
-  const scope = bindPositionalInputs(group, argValues, ctx.constants);
+  // Re-scope ctx to the owning document so %constants resolve against ITS const[]
+  // (§7.8.0.6 scopes constants to "a single mapping source file"), not the caller's.
+  const groupCtx = ctx.forDoc ? ctx.forDoc(owningDoc) : ctx;
+
+  const scope = bindPositionalInputs(group, argValues, groupCtx.constants);
   for (const rule of getEffectiveRules(owningDoc, group)) {
-    executeRule(rule, scope, ctx, listPlan);
+    executeRule(rule, scope, groupCtx, listPlan);
   }
 }

@@ -94,12 +94,19 @@ All 8 implementation phases are complete:
 - Target `listMode` (`first`/`share`/`last`/`single`) assembly, order-independent of
   rule execution order.
 - Nested rules, dependent rule/group invocation, `extends`, default mapping groups
-  (`typeMode: types | type-and-types`) and the identity-transform simple form.
-- Imports (incl. `*` wildcard resolution) and lazy, cached, circular-safe constants.
+  (`typeMode: types | type-and-types`) and the identity-transform simple form, plus its
+  batch/list shorthand (`src -> tgt: a, b, c;`, §"Simple Form: Identity Transform").
+- Imports (incl. `*` wildcard resolution) and lazy, cached, circular-safe constants,
+  correctly re-scoped per document — a group invoked from an imported map sees that
+  map's own `const[]`, not the caller's (§7.8.0.6).
 - Type-aware structural checks and `queried`/`produced` structure modes via injected
   resolvers.
 - A hand-written FML concrete-syntax parser (lexer + recursive-descent parser),
-  grounded in [`mapping.g4`](https://www.hl7.org/fhir/mapping.g4).
+  grounded in [`mapping.g4`](https://www.hl7.org/fhir/mapping.g4) and cross-checked
+  against the official HAPI/HL7 Java reference implementation
+  (`org.hl7.fhir.r5.utils.structuremap.StructureMapUtilities`) for shapes the published
+  grammar omits, e.g. the identity-transform batch shorthand above and multi-line
+  `"""markdown"""` metadata values (`/// description = """..."""`).
 - Validated against the official example StructureMaps published at
   [structuremap-examples.html](https://www.hl7.org/fhir/structuremap-examples.html)
   (see `tests/integration/hl7-examples.test.js`).
@@ -107,26 +114,30 @@ All 8 implementation phases are complete:
 ## Known gaps (honest, not silently guessed around)
 
 - **`dateOp`** — the spec's own transform table lists its parameters as `??`; never
-  defined upstream, so it's left throwing a documented error rather than inventing
-  behavior.
-- **`src -> tgt: a, b, c;`** — this colon-list shorthand isn't in the published FML
-  grammar at all; not supported.
+  defined upstream. Confirmed this isn't just our own gap: the official HAPI/HL7 Java
+  reference implementation *also* throws "not supported yet" for `DATEOP` — matching
+  that industry-wide unresolved state rather than inventing behavior.
 - **Direct multi-segment copy** (`tgt.a = src.b.c` without first binding `src.b.c as
   x`) — our JSON model's `copy` parameter is a single bound variable, not a path
-  expression; throws a clear error asking for an explicit alias instead.
-- **`/// metadata` lines** — only simple, single-line, primitive top-level fields are
-  supported (see the list in `src/fml/metadata.js`); dotted/complex properties and
-  multi-line markdown values are ignored.
-- **Constants are effectively global for a run** — resolved once from the top-level
-  document, including inside groups invoked from an imported map, rather than being
-  re-scoped per document boundary (the spec scopes constant names to "a single mapping
-  source file"). See PLAN.md Phase 5 for the reasoning.
+  expression; throws a clear error asking for an explicit alias instead. The reference
+  implementation's parser accepts a dotted parameter here, but its own executor resolves
+  parameters by a flat variable-name lookup with no path traversal — it's unclear this
+  path is actually exercised/working there either, so it wasn't replicated without a
+  real test against it.
+- **Dotted/complex `///` metadata properties** (e.g. `jurisdiction.coding.system`) are
+  ignored — matching the reference implementation, which also silently drops any
+  metadata name it doesn't special-case.
 - **Auto-create is untyped by default** — without an injected
   `structureDefinitionResolver` that resolves both ends' types, a transform-less target
-  auto-creates a plain `{}` rather than the identity-transform's default-mapping-group
-  dispatch.
-- **No bundled StructureDefinitions, FHIRPath engine, or terminology client** — this is
-  deliberate (see PLAN.md "Non-goals"), not a gap to be closed later.
+  auto-creates a plain `{}` rather than dispatching to the identity-transform's
+  default-mapping-group. Not a defect — this is the expected result of the "no
+  StructureDefinitions bundled" design choice below when no resolver is supplied.
+
+## Design non-goals (deliberate, not gaps)
+
+- **No bundled StructureDefinitions, FHIRPath engine, or terminology client** — always
+  via an injected resolver/evaluator/callback, to keep the library small and
+  host-agnostic. See PLAN.md "Non-goals".
 
 ## License
 

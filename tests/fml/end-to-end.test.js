@@ -101,4 +101,24 @@ describe('FML end-to-end — parsed text actually executes through the real engi
     const result = engine.run(doc, { src: { values: [1, 2, 3, 4] }, tgt: { big: [] } });
     expect(result.tgt.big).toEqual([3, 4]);
   });
+
+  it('runs the Simple Form: Identity Transform batch shorthand (src -> tgt: a, b, c;)', () => {
+    const doc = parseFMLToDocument(`
+      map "u" = X
+      group main(source src, target tgt) {
+        src -> tgt: name, gender, birthDate;
+      }
+    `);
+    const engine = new StructureMapEngine({ evaluator: realEvaluator });
+    const result = engine.run(doc, {
+      src: { name: 'Alice', gender: 'female', birthDate: '1990-01-01' },
+      tgt: {},
+    });
+    // No structureDefinitionResolver injected, so each desugared identity rule falls
+    // back to plain untyped auto-create (same as a manually-written `src.x -> tgt.x;`
+    // rule with no resolver — see tests/engine/target-applier.test.js) rather than
+    // copying the scalar value; this proves the batch form reuses the exact same
+    // identity/auto-create pipeline, not a special-cased copy.
+    expect(result.tgt).toEqual({ name: {}, gender: {}, birthDate: {} });
+  });
 });

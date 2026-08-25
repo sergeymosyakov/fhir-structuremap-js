@@ -2,6 +2,17 @@
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+- Identity Transform "Simple Form" batch shorthand (`src -> tgt: a, b, c;`).
+- `"""markdown"""` multi-line `///` metadata values (e.g. `description`).
+
+### Fixed
+- `%constants` now resolve against the owning document of the currently-executing
+  group (§7.8.0.6), not always the top-level `run()` document — a real deviation
+  found by cross-checking the official HAPI/HL7 Java reference implementation.
+
 ## [1.0.0] - 2026-08-25
 
 ### Added

@@ -28,6 +28,31 @@ describe('extractMetadata', () => {
   it('ignores plain comments that are not metadata', () => {
     expect(extractMetadata('// just a comment\n/// also not = valid = weird')).toEqual({});
   });
+
+  it('extracts a multi-line """markdown""" value, without a /// prefix on continuation lines', () => {
+    const text = [
+      '/// description = """',
+      'Line one.',
+      'Line two.',
+      '"""',
+    ].join('\n');
+    expect(extractMetadata(text)).toEqual({ description: '\nLine one.\nLine two.\n' });
+  });
+
+  it('extracts a """markdown""" value that opens and closes on the same line', () => {
+    expect(extractMetadata('/// description = """short"""')).toEqual({ description: 'short' });
+  });
+
+  it('extracts a multi-line value followed by further ordinary metadata lines', () => {
+    const text = [
+      '/// description = """',
+      'multi',
+      'line',
+      '"""',
+      "/// status = 'active'",
+    ].join('\n');
+    expect(extractMetadata(text)).toEqual({ description: '\nmulti\nline\n', status: 'active' });
+  });
 });
 
 describe('parseFMLToJSON — metadata integration', () => {
