@@ -1,0 +1,64 @@
+# Tag, create a GitHub Release, and publish to npm via Trusted Publishing (OIDC).
+#
+# Versioning: version lives in package.json (hand-edited per release). This workflow
+# does not bump it — bump package.json + CHANGELOG.md in a regular PR first, merge to
+# main, then run this workflow.
+#
+# Trigger: manual only (Actions -> "Release" -> Run workflow).
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write   # create git tag + GitHub Release
+  id-token: write   # required for npm Trusted Publishing (OIDC), no NPM_TOKEN needed
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0   # tags needed to guard against re-releasing an existing version
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npx vitest run
+
+      - name: Compute version and guard against re-release
+        id: ver
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="v${VERSION}"
+          git fetch --tags --force
+          if git tag -l "$TAG" | grep -q "$TAG"; then
+            echo "Tag $TAG already exists — bump package.json version first." >&2
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Create tag and GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.ver.outputs.tag }}"
+          git tag "$TAG"
+          git push origin "$TAG"
+          PREV=$(git tag -l 'v*' --sort=-v:refname | grep -v "^${TAG}\$" | head -1)
+          CHANGELOG=$(gh api "repos/${{ github.repository }}/releases/generate-notes" \
+            -f tag_name="$TAG" ${PREV:+-f previous_tag_name="$PREV"} --jq '.body' || true)
+          gh release create "$TAG" --latest --title "$TAG" --notes "$CHANGELOG"
+
+      - name: Publish to npm (Trusted Publishing)
+        run: npm publish --access public --provenance
