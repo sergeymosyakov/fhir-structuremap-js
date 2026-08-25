@@ -107,6 +107,9 @@ All 8 implementation phases are complete:
   (`org.hl7.fhir.r5.utils.structuremap.StructureMapUtilities`) for shapes the published
   grammar omits, e.g. the identity-transform batch shorthand above and multi-line
   `"""markdown"""` metadata values (`/// description = """..."""`).
+- Direct multi-segment copy (`tgt.a = src.b.c`, no `as x` binding needed) — desugared
+  at parse time into `evaluate(src, 'b.c')`, reusing the already-injected FHIRPath
+  evaluator rather than requiring a flat variable-name lookup.
 - Validated against the official example StructureMaps published at
   [structuremap-examples.html](https://www.hl7.org/fhir/structuremap-examples.html)
   (see `tests/integration/hl7-examples.test.js`).
@@ -117,13 +120,6 @@ All 8 implementation phases are complete:
   defined upstream. Confirmed this isn't just our own gap: the official HAPI/HL7 Java
   reference implementation *also* throws "not supported yet" for `DATEOP` — matching
   that industry-wide unresolved state rather than inventing behavior.
-- **Direct multi-segment copy** (`tgt.a = src.b.c` without first binding `src.b.c as
-  x`) — our JSON model's `copy` parameter is a single bound variable, not a path
-  expression; throws a clear error asking for an explicit alias instead. The reference
-  implementation's parser accepts a dotted parameter here, but its own executor resolves
-  parameters by a flat variable-name lookup with no path traversal — it's unclear this
-  path is actually exercised/working there either, so it wasn't replicated without a
-  real test against it.
 - **Dotted/complex `///` metadata properties** (e.g. `jurisdiction.coding.system`) are
   ignored — matching the reference implementation, which also silently drops any
   metadata name it doesn't special-case.

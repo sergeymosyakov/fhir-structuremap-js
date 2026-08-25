@@ -414,6 +414,18 @@ new identity-batch parser tests + 1 end-to-end test + 3 new metadata multi-line 
 Tests: 311 pass project-wide. Lint clean. Coverage: 99.24% statements / 98.36% branches
 / 100% functions / 100% lines.
 
+## Post-Phase-10 fix — direct multi-segment copy via evaluate() desugar
+
+`tgt.a = src.b.c` (no `as x` binding) previously threw a parse-time error, matching
+what looked like the reference implementation's own behavior. On reflection (and user
+challenge) the reference's *parser* accepts a dotted `copy` parameter, but its
+*executor* (`getParam`) resolves it via a flat variable-name lookup with no path
+traversal — meaning the reference's own version likely never actually works either.
+Rather than replicate that, `src/fml/ast-to-json.js`'s `convertTransform` now desugars
+a multi-segment `contextRef` into `evaluate(root, 'rest.path')`, reusing the
+already-injected FHIRPath evaluator instead of requiring a bound variable. Moved from
+README's "Known gaps" to "Supported". Tests: 313 pass (was 311).
+
 ## Non-goals (explicitly out of scope, to keep the library self-sufficient and small)
 
 - No bundled StructureDefinitions/profile dumps for R4/R5/STU3 — always via injected

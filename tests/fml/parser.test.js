@@ -242,8 +242,14 @@ describe('parseFMLToJSON — rule targets / transforms', () => {
     expect(rule(json).target).toHaveLength(2);
   });
 
-  it('rejects a direct multi-segment copy without binding a variable first', () => {
-    expect(() => parseFMLToJSON(wrap('src.value as v -> tgt.a = src.value;'))).toThrow(/binding it to a variable/);
+  it('desugars a direct multi-segment copy into evaluate(root, "rest.path") instead of requiring a bound variable', () => {
+    const json = parseFMLToJSON(wrap('src.value as v -> tgt.a = src.value;'));
+    expect(rule(json).target[0]).toMatchObject({ transform: 'evaluate', parameter: [{ valueId: 'src' }, { valueString: 'value' }] });
+  });
+
+  it('desugars a 3+ segment path, joining everything after the root as the FHIRPath expression', () => {
+    const json = parseFMLToJSON(wrap('src.value as v -> tgt.a = src.b.c.d;'));
+    expect(rule(json).target[0]).toMatchObject({ transform: 'evaluate', parameter: [{ valueId: 'src' }, { valueString: 'b.c.d' }] });
   });
 });
 
