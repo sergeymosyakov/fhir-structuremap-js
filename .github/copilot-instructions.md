@@ -26,12 +26,13 @@
    - "commit and push" / "пушай" = permission for both in one step.
    - "move / create / fix" without explicit commit/push instruction = only edit files, do NOT commit or push.
 2. **Before every push** — announce "I'm about to push, running pre-push checklist first", then: run `npm run lint` (must pass, zero errors); run `npx vitest run` (must pass); update `PLAN.md` if a phase's scope or status changed; update `README.md` only for major changes (public API, usage, supported-subset summary).
-3. **No npm/release automation for now.** No `npm publish`, no version bumps, no release workflow — this repo is implementation-only until explicitly told otherwise.
+3. **npm release process.** Published as `fhir-structuremap-js` (public, unscoped) via **npm Trusted Publishing (OIDC)** — no `NPM_TOKEN` secret. Release flow: bump `version` in `package.json` + `CHANGELOG.md` in a normal PR, merge to `main`, then run `.github/workflows/release.yml` manually (Actions → "Release" → Run workflow) — it tags, creates a GitHub Release, and runs `npm publish --provenance`. Version bumps/releases still only happen on explicit user instruction, same as commit/push.
 4. **English only** — all code comments, doc strings, commit messages, README, PLAN.md, any in-repo text must be in English. No Russian anywhere in the codebase.
 5. **Every phase ships with tests.** New model classes, transform functions, or engine behavior land with unit tests against real StructureMap JSON fixtures (see `tests/fixtures/`) proving the spec behavior, not just that the code runs. A feature is not "done" until its PLAN.md phase's tests pass.
 6. **New rules go into the repo, not just memory** — whenever a new rule is established (in conversation, from a bug, from a lesson learned), add it immediately to this file, without asking.
 7. **Always run tests in an observable way — never blind-buffer.** Any test run (Vitest) must be launched so its live state can be inspected at any moment. Do NOT pipe the command through `tail`/`head`/`grep` (that hides all output until the process ends). Run plain `npx vitest run`, then filter a saved log afterwards if a summary is needed.
 8. **Lean comments & commits — essence only.** Comments: one-line file/class headers, comment only the non-obvious _why_ (usually a spec citation here); no multi-paragraph doc comments. Commit messages: subject + short essence-only bullets, no essays.
+9. **GitHub Actions: SHA-pin every third-party action.** All `uses:` references in `.github/workflows/*.yml` are pinned to a full commit SHA with a `# vX.Y.Z` comment (resolve via `gh api repos/OWNER/REPO/git/ref/tags/vX`), never a floating tag. See [skills/github-actions-hardening/SKILL.md](skills/github-actions-hardening/SKILL.md). Also: this account maintains multiple repos (fhir-qb, fhir-structuremap-js, ...) — keep CI/release conventions identical across them where reasonable; flag and ask before letting them diverge.
 
 ---
 
