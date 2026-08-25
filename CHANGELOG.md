@@ -13,11 +13,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `evaluate(src, 'b.c')` instead of throwing.
 - `dateOp(date, '+'|'-', value, unit)` — implemented on top of FHIRPath's own
   date/time arithmetic instead of throwing "not implemented".
+- Dotted/repeating `///` metadata properties (`jurisdiction`, `contact`) per §7.8.0.3.
 
 ### Fixed
 - `%constants` now resolve against the owning document of the currently-executing
   group (§7.8.0.6), not always the top-level `run()` document — a real deviation
   found by cross-checking the official HAPI/HL7 Java reference implementation.
+- `extractMetadata()` no longer absorbs a coincidentally `///`-shaped line found deep
+  inside a rule body — metadata scanning now stops at the `map` statement.
 - Multi-line `"""..."""` metadata broke the FML parser pipeline outside of
   `extractMetadata()` isolation — lexer now skips un-prefixed continuation lines.
 - Identity-batch desugared rules didn't bind a source variable, crashing typed

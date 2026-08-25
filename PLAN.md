@@ -444,6 +444,44 @@ instead, after a defensive format check. `src/transforms/functions/date-op.js`
 implements `dateOp(date, '+'|'-', value, unit)`. Moved from README's "Known gaps" to
 "Supported". Tests: 319 pass (was 313).
 
+## Post-Phase-10 fix — implement dotted/repeating `///` metadata properties
+
+Previously documented as "matching the reference implementation, which also silently
+drops any metadata name it doesn't special-case" — on user challenge, re-read §7.8.0.3
+directly instead of trusting that inference, and found the spec DOES define this
+precisely, with a worked example (`jurisdiction.coding.system` etc.) and explicit rules
+("the property can repeat", "additional items with the same name represent repeats").
+The earlier "gap" framing was simply wrong — HAPI's own incompleteness isn't evidence
+the spec omits something.
+
+Implemented `assignDottedMetadata()` in `src/fml/metadata.js`: dotted paths build
+nested arrays/objects using a hardcoded cardinality schema (`COMPLEX_METADATA_SCHEMA`)
+for the two complex StructureMap metadata fields realistically used in hand-written
+FML — `jurisdiction` (CodeableConcept[] → Coding[]) and `contact` (ContactDetail[] →
+ContactPoint[]). This is NOT the "no bundled StructureDefinitions" principle being
+violated: those cardinalities are fixed by the FHIR datatype definitions themselves,
+not host/data-dependent, so hardcoding a handful of them is scoped and correct, not a
+guess. Repeat detection applies only at the leaf/bare-value actually being set on a
+given line (via a `WeakMap`-tracked "touched" set, keyed by object identity so nothing
+leaks onto the output JSON) — never to intermediate segments merely revisited across
+several lines to populate the same entry further, which took two rounds of tracing
+against constructed test cases to get right (an over-eager first version incorrectly
+started a new instance every time an intermediate segment was touched).
+
+**A second real bug found in the process**: `extractMetadata()` scanned the *entire*
+file unconditionally for `///`-shaped lines, with no boundary — meaning a
+coincidentally `///`-shaped line deep inside a rule body (e.g. `/// jurisdiction.coding.
+code = 'SNEAKY'` written as an offhand comment) was silently absorbed into the
+document's metadata. Fixed by stopping the scan at the `map` statement (a reserved
+keyword, an unambiguous boundary), matching §7.8.0.3's "the first part of a mapping
+file" framing.
+
+New `tests/integration/complex-metadata.test.js`: a full multi-field header (simple +
+two repeating jurisdictions + a contact with two telecoms + multi-line markdown)
+combined with a real executable map through the full FML → JSON → engine pipeline, plus
+the metadata-boundary regression cases above. Moved from README's "Known gaps" to
+"Supported". Tests: 331 pass (was 319).
+
 ## Non-goals (explicitly out of scope, to keep the library self-sufficient and small)
 
 - No bundled StructureDefinitions/profile dumps for R4/R5/STU3 — always via injected

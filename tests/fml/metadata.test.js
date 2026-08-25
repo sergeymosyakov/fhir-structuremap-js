@@ -21,8 +21,8 @@ describe('extractMetadata', () => {
     expect(extractMetadata('/// title = "My Map"')).toEqual({ title: 'My Map' });
   });
 
-  it('ignores dotted/complex property lines', () => {
-    expect(extractMetadata('/// jurisdiction.coding.system = urn:x')).toEqual({});
+  it('ignores unknown complex field names not in COMPLEX_METADATA_SCHEMA', () => {
+    expect(extractMetadata("/// useContext.code.system = urn:x")).toEqual({});
   });
 
   it('ignores unknown field names', () => {
@@ -61,6 +61,68 @@ describe('extractMetadata', () => {
   it('takes the rest of the text when a """ value is never closed', () => {
     const text = ['/// description = """', 'unterminated'].join('\n');
     expect(extractMetadata(text)).toEqual({ description: '\nunterminated' });
+  });
+});
+
+describe('extractMetadata — dotted/repeating complex properties (§7.8.0.3)', () => {
+  it('matches the spec\'s own worked example exactly', () => {
+    const text = [
+      '/// jurisdiction =',
+      '/// jurisdiction.coding =',
+      "/// jurisdiction.coding.system = 'urn:iso:std:iso:3166'",
+      "/// jurisdiction.coding.code = 'AQ'",
+    ].join('\n');
+    expect(extractMetadata(text)).toEqual({
+      jurisdiction: [{ coding: [{ system: 'urn:iso:std:iso:3166', code: 'AQ' }] }],
+    });
+  });
+
+  it('supports a dotted path directly, without a preceding bare "name =" line', () => {
+    const text = ["/// jurisdiction.coding.code = 'AQ'"].join('\n');
+    expect(extractMetadata(text)).toEqual({ jurisdiction: [{ coding: [{ code: 'AQ' }] }] });
+  });
+
+  it('a repeated leaf property starts a new instance at the nearest repeating ancestor', () => {
+    const text = [
+      "/// jurisdiction.coding.system = 'urn:iso:std:iso:3166'",
+      "/// jurisdiction.coding.code = 'AQ'",
+      "/// jurisdiction.coding.system = 'urn:iso:std:iso:3166'",
+      "/// jurisdiction.coding.code = 'AU'",
+    ].join('\n');
+    expect(extractMetadata(text)).toEqual({
+      jurisdiction: [{
+        coding: [
+          { system: 'urn:iso:std:iso:3166', code: 'AQ' },
+          { system: 'urn:iso:std:iso:3166', code: 'AU' },
+        ],
+      }],
+    });
+  });
+
+  it('a bare "name =" line starts a new top-level instance even mid-stream', () => {
+    const text = [
+      "/// jurisdiction.coding.code = 'AQ'",
+      '/// jurisdiction =',
+      "/// jurisdiction.coding.code = 'AU'",
+    ].join('\n');
+    expect(extractMetadata(text)).toEqual({
+      jurisdiction: [{ coding: [{ code: 'AQ' }] }, { coding: [{ code: 'AU' }] }],
+    });
+  });
+
+  it('supports the other hardcoded complex field, contact (ContactDetail[] -> ContactPoint[])', () => {
+    const text = [
+      "/// contact.name = 'Grahame Grieve'",
+      "/// contact.telecom.system = 'email'",
+      "/// contact.telecom.value = 'grahame@example.org'",
+    ].join('\n');
+    expect(extractMetadata(text)).toEqual({
+      contact: [{ name: 'Grahame Grieve', telecom: [{ system: 'email', value: 'grahame@example.org' }] }],
+    });
+  });
+
+  it('ignores an unsupported nested field name under a known complex root, with no side effect', () => {
+    expect(extractMetadata("/// jurisdiction.notAField = 'x'")).toEqual({});
   });
 });
 
