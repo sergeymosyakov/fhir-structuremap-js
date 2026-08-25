@@ -240,17 +240,58 @@ Spec: §7.8.0.4 (Structure Definition References — `queried`/`produced` modes)
   hand-written StructureDefinition fixtures in `tests/fixtures/`, never a bundled
   profile dump.
 
-## Phase 7 — FML concrete-syntax parser (optional round-trip layer)
+## Phase 7 — FML concrete-syntax parser (optional round-trip layer) — DONE
 
 Spec: full §7.8.0 (concrete syntax), formal grammar at https://www.hl7.org/fhir/mapping.g4.
+We investigated adopting `@synanetics/fhir-fml-convert` (MIT, ANTLR4-generated from
+HL7's own grammar) instead of hand-writing this — its own README documents unsupported
+`const`/`check`/`listMode`, all of which our engine already implements, so a hand-written
+parser was chosen to keep full feature parity with the JSON-execution path.
 
-- Only needed if we want to accept raw `.map`/FML text (not just StructureMap JSON) as
-  input, or to author/edit maps as text. Most real-world consumption (canonical URL →
-  StructureMap resource) is already JSON, so this phase is explicitly lower priority than
-  1–6 and is deferred until the JSON-execution path is solid and tested end to end.
-- If built: a small recursive-descent or PEG parser (not a full ANTLR toolchain, to keep
-  the package light) producing the same `StructureMapDocument` object graph as
-  `fromJSON()`, so the engine never needs to know which input form was used.
+Delivered as `src/fml/`: `lexer.js` (hand-written tokenizer) → `parser.js`
+(recursive-descent, one method per grammar production) → `ast-to-json.js` (AST → the
+same StructureMap JSON shape `StructureMapDocument.fromJSON()` already consumes) →
+`index.js` (`parseFMLToJSON`/`parseFMLToDocument`).
+
+Two deliberate, documented deviations from the published grammar (which multiple
+implementers, including `fhir-fml-convert`'s own README, report as buggy):
+- `fhirPath` positions (`default()`, `where()`, `check()`, `log()`, and `evaluate()`'s
+  2nd argument) capture **raw source text** between balanced parens, rather than
+  tokenizing FHIRPath itself — the published grammar treats `fhirPath` as a bare
+  `literal` placeholder, which cannot represent real expressions like
+  `given.first() + ' ' + family`. The lexer is deliberately permissive (an `OTHER`
+  token for any character it doesn't model, e.g. `%`, `>`, `!=`) precisely so raw-span
+  capture can coexist with whole-file upfront tokenization.
+- The bare `(expr)` target shorthand for `evaluate($this, expr)` (§7.8.0.8.2) is
+  supported even though the published `transform` rule omits it.
+- The published grammar requires 2+ group parameters (`parameter (',' parameter)+`);
+  relaxed to 1+ to match the prose's explicit single-input exception for a map's first
+  group.
+
+**Known limitations (bounded, documented, not silently guessed around):**
+- The `src -> tgt: a, b, c;` colon-list shorthand is not in the published grammar at
+  all and is not supported.
+- Copying directly from a multi-segment path as a target's value (`tgt.a = src.b.c`
+  without first binding `src.b.c as x`) is rejected with a clear error — our JSON
+  model's `copy` parameter is a single bound variable, not a path expression.
+- `/// name = value` metadata supports only simple, single-line, primitive fields
+  (`url`, `name`, `title`, `status`, `experimental`, `description`, `publisher`,
+  `version`, `date`, `purpose`, `copyright`) — dotted/complex properties (e.g.
+  `jurisdiction.coding.system`) and multi-line `"""markdown"""` values are ignored.
+
+**A genuinely useful side effect:** building and testing this parser surfaced two real
+engine bugs from earlier phases that JSON-only tests hadn't hit — a `listMode`
+double-wrapping bug that silently turned a non-repeating target into an array, and a
+non-idempotent auto-create that overwrote an already-populated element when subElement
+chaining crossed a value another sibling rule had already set. Both are now fixed with
+regression tests in `tests/engine/`, not just `tests/fml/`.
+
+Tests: `tests/fml/{lexer,parser,metadata,errors}.test.js` (every grammar production,
+both list-mode vocabularies, subElement-chain desugaring, `<<types>>`/`<<type+>>`,
+extends, dependent invocations vs. nested `then {}` blocks, and a battery of syntax-error
+cases) plus `tests/fml/end-to-end.test.js`, which parses real FML text and runs it
+through the actual `StructureMapEngine` — proving the parser's output isn't just
+shaped correctly but genuinely executable. 221 tests pass project-wide.
 
 ## Phase 8 — Hardening, docs, packaging
 

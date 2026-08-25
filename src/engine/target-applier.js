@@ -37,6 +37,17 @@ export function applyTarget(ruleTarget, scope, ctx, listPlan, claimant) {
     throw new EngineError(`RuleTarget: context variable "${ruleTarget.context}" is not bound`);
   }
   const contextNode = scope.get(ruleTarget.context);
+
+  // Auto-create is idempotent: navigating into an element that already has a value
+  // (e.g. set by an earlier sibling rule, or a previous firing) reuses it rather than
+  // silently overwriting — this is what makes subElement chaining (tgt.a.b = x) safe
+  // to combine with another rule that already populated tgt.a.
+  if (!ruleTarget.transform && ruleTarget.element && contextNode[ruleTarget.element] !== undefined) {
+    const existing = contextNode[ruleTarget.element];
+    if (ruleTarget.variable) scope.set(ruleTarget.variable, existing);
+    return existing;
+  }
+
   const values = computeValue(ruleTarget, scope, ctx);
 
   if (values.length === 0) return undefined; // evaluate() -> empty collection: nothing created
