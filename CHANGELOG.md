@@ -1,9 +1,8 @@
 # Changelog
 
-Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Not yet
-published to npm — versions below track implementation milestones, not releases.
+Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [1.0.0] - 2026-08-25
 
 ### Added
 - Phase 1: core StructureMap JSON model (`StructureMapDocument.fromJSON()`) and the
