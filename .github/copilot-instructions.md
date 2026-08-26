@@ -41,6 +41,7 @@
 
 | File | Scope | Contains |
 |------|-------|----------|
+| [skills/feature-workflow/SKILL.md](skills/feature-workflow/SKILL.md) | on-demand | Standard issue → branch → implement/validate → commit → push → PR-with-auto-merge → close-out flow for any feature/fix |
 | [skills/security-review/SKILL.md](skills/security-review/SKILL.md) | on-demand | AI-reasoned OWASP-style codebase security scan (injection, secrets, access control, crypto, deps) — report only, no auto-applied patches |
 | [skills/github-actions-hardening/SKILL.md](skills/github-actions-hardening/SKILL.md) | on-demand | Security review for `.github/workflows/*.yml` — script injection, privileged triggers, action pinning, token scopes — report only |
 
