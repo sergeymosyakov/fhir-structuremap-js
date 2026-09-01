@@ -4,6 +4,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- `peerDependencies.fhirpath` widened to accept `^5.0.0` (tested against 5.2.0);
+  the engine still never bundles its own FHIRPath copy — hosts inject their own
+  evaluator regardless of which supported major version they use.
+
 ## [1.1.0] - 2026-08-25
 
 ### Added
