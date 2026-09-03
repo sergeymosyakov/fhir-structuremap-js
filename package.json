@@ -1,6 +1,6 @@
 {
   "name": "fhir-structuremap-js",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Standalone, browser-capable JS engine that executes FHIR StructureMap (FHIR Mapping Language) transforms.",
   "type": "module",
   "main": "./src/index.js",

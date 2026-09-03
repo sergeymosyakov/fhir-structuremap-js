@@ -161,7 +161,9 @@ export function extractMetadata(text) {
     // file (a coincidental doc-comment, say) is never mistaken for metadata. `map` is
     // a reserved keyword, so this is an unambiguous boundary.
     if (/^\s*map\b/.test(lines[li])) break;
-    const m = /^\s*\/\/\/\s*([A-Za-z][A-Za-z.]*)\s*=\s*(.*)$/.exec(lines[li]);
+    // No `\s*` before `(.*)$`: it would overlap with `.` (ReDoS-prone ambiguity) and
+    // is redundant anyway since rawValue is trimmed below.
+    const m = /^\s*\/\/\/\s*([A-Za-z][A-Za-z.]*)\s*=(.*)$/.exec(lines[li]);
     if (!m) continue;
     const [, name, rawValue] = m;
     const path = name.split('.');
