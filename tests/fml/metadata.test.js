@@ -62,6 +62,17 @@ describe('extractMetadata', () => {
     const text = ['/// description = """', 'unterminated'].join('\n');
     expect(extractMetadata(text)).toEqual({ description: '\nunterminated' });
   });
+
+  it('trims trailing whitespace after the value same as before (regex ReDoS fix, GHSA/CodeQL js/polynomial-redos)', () => {
+    expect(extractMetadata('/// title = My Map   ')).toEqual({ title: 'My Map' });
+  });
+
+  it('parses a pathological run of trailing whitespace in bounded time (js/polynomial-redos regression)', () => {
+    const text = `///A=${' '.repeat(50_000)}`;
+    const start = Date.now();
+    extractMetadata(text);
+    expect(Date.now() - start).toBeLessThan(200);
+  });
 });
 
 describe('extractMetadata — dotted/repeating complex properties (§7.8.0.3)', () => {

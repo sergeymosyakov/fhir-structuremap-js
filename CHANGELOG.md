@@ -4,6 +4,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-09-03
+
+### Fixed
+- Polynomial ReDoS in the FML `///` metadata regex (`src/fml/metadata.js`) —
+  removed a redundant `\s*` right before the trailing capture group, the
+  classic ambiguous-adjacent-quantifier shape (CodeQL `js/polynomial-redos`).
+  Behavior-neutral: the captured value is `.trim()`-ed regardless.
+
 ## [1.2.0] - 2026-09-01
 
 ### Changed
