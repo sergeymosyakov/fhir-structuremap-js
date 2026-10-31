@@ -20,6 +20,7 @@ The same flow applies to every feature, fix, or chore that touches code (not jus
 - Do the work. Run `npm run lint` + `npx vitest run` before considering it done — every phase ships with unit tests against real StructureMap JSON fixtures proving the spec behavior, not just that the code runs.
 - Ground each feature in the actual spec section (`docs/mapping-language.html` / `docs/structuremap.html` references) and cite it in comments/commits, per this repo's own copilot-instructions.md.
 - If a real bug slips through review/testing, fix it directly on the same branch — don't open a second branch for a same-feature bugfix found before merge.
+- Before committing/pushing, get the independent review (`copilot-instructions.md` rule 10): after lint + tests, fix the real findings.
 
 ## 4. Commit + push — still two separate explicit permissions
 - This workflow describes the SHAPE of the flow, not a bypass of the commit/push permission rule: commit and push each still require the user's explicit "commit" / "push" / "да" — never fire them just because the feature "looks done".
@@ -27,6 +28,7 @@ The same flow applies to every feature, fix, or chore that touches code (not jus
 
 ## 5. PR — only once the feature is fully complete
 - If the branch is mid-flight (more work planned before it's shippable), don't open a PR yet — keep pushing to the branch and iterating.
+- Independent review done first (`copilot-instructions.md` rule 10) — never open the PR and review afterwards.
 - Once fully complete and validated: `gh pr create` (reference the tracking issue with `Closes #<n>` in the body when one exists), then `gh pr merge <branch> --squash --auto`. Squash auto-merge is the default — skip it only for large/needs-manual-review branches, and say so explicitly rather than silently deviating.
 - Version bumps/npm releases are a separate, always-explicit step (see this repo's copilot-instructions.md release process) — never bundle a version bump into a feature PR unless asked.
 
