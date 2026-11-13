@@ -43,9 +43,14 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/coverage-v8": "^4.1.12",
     "eslint": "^10.0.0",
     "fhirpath": "^5.2.0",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.12"
+  },
+  "overrides": {
+    "eslint": {
+      "minimatch": "^11.0.1"
+    }
   }
 }
